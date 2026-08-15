@@ -143,25 +143,3 @@ pub fn Term::is_(self : Term, expr : Term) -> Term {
 pub fn Term::not_(self : Term) -> Term {
   Compound("not", [self])
 }
-
-///|
-/// Internal goal-construction helpers (no receiver), used by the engine and
-/// the bundled clauses. The public API is the `Term` methods above.
-fn and_(a : Term, b : Term) -> Term {
-  a.and_(b)
-}
-
-///|
-fn eq(a : Term, b : Term) -> Term {
-  a.eq(b)
-}
-
-///|
-fn is_(x : Term, expr : Term) -> Term {
-  x.is_(expr)
-}
-
-///|
-fn not_(g : Term) -> Term {
-  g.not_()
-}

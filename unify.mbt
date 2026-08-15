@@ -41,27 +41,15 @@ pub fn Term::deref(self : Term, s : Subst) -> Term {
 }
 
 ///|
-/// Internal dereferencing (no receiver), used throughout the engine.
-fn deref(t : Term, s : Subst) -> Term {
-  t.deref(s)
-}
-
-///|
 /// Fully resolves a term: bound variables are replaced by their values
 /// recursively, unbound variables stay as they are.
 pub fn Term::resolve(self : Term, s : Subst) -> Term {
-  match deref(self, s) {
+  match self.deref(s) {
     Var(v) => Var(v)
-    List(xs) => List(xs.map(fn(x) { resolve(x, s) }))
-    Compound(f, args) => Compound(f, args.map(fn(x) { resolve(x, s) }))
+    List(xs) => List(xs.map(fn(x) { x.resolve(s) }))
+    Compound(f, args) => Compound(f, args.map(fn(x) { x.resolve(s) }))
     other => other
   }
-}
-
-///|
-/// Internal resolving (no receiver), used throughout the engine.
-fn resolve(t : Term, s : Subst) -> Term {
-  t.resolve(s)
 }
 
 ///|
@@ -81,14 +69,8 @@ fn resolve(t : Term, s : Subst) -> Term {
 /// }
 /// ```
 pub fn Term::unify(self : Term, other : Term, s : Subst) -> Subst? {
-  unify(self, other, s)
-}
-
-///|
-/// Internal unification (no receiver), used throughout the engine.
-fn unify(a : Term, b : Term, s : Subst) -> Subst? {
-  let a = deref(a, s)
-  let b = deref(b, s)
+  let a = self.deref(s)
+  let b = other.deref(s)
   match (a, b) {
     (Var(x), Var(y)) if x.id == y.id => Some(s)
     (Var(x), _) => bind(s, x.id, b)
@@ -116,7 +98,7 @@ fn unify_ground(a : Term, b : Term, s : Subst) -> Subst? {
       for i in 0..<n {
         match cur {
           None => break
-          Some(si) => cur = unify(ha[i], hb[i], si)
+          Some(si) => cur = ha[i].unify(hb[i], si)
         }
       }
       match cur {
@@ -138,7 +120,7 @@ fn unify_ground(a : Term, b : Term, s : Subst) -> Subst? {
             for i in 0..<a1.length() {
               match cur {
                 None => break
-                Some(si) => cur = unify(a1[i], a2[i], si)
+                Some(si) => cur = a1[i].unify(a2[i], si)
               }
             }
             cur
@@ -166,13 +148,13 @@ fn unify_list_rest(
   s : Subst,
 ) -> Subst? {
   if n < ha.length() && n < hb.length() {
-    unify(chain_from(ha, n, ta), chain_from(hb, n, tb), s)
+    chain_from(ha, n, ta).unify(chain_from(hb, n, tb), s)
   } else if n < ha.length() {
-    unify(chain_from(ha, n, ta), tb, s)
+    chain_from(ha, n, ta).unify(tb, s)
   } else if n < hb.length() {
-    unify(ta, chain_from(hb, n, tb), s)
+    ta.unify(chain_from(hb, n, tb), s)
   } else {
-    unify(ta, tb, s)
+    ta.unify(tb, s)
   }
 }
 
@@ -197,7 +179,7 @@ fn bind(s : Subst, id : Int, t : Term) -> Subst? {
 ///|
 /// Occur check: does variable `id` occur inside `t` (after dereferencing)?
 fn occurs(id : Int, t : Term, s : Subst) -> Bool {
-  match deref(t, s) {
+  match t.deref(s) {
     Var(v) => v.id == id
     List(xs) => xs.any(fn(x) { occurs(id, x, s) })
     Compound(_, args) => args.any(fn(x) { occurs(id, x, s) })

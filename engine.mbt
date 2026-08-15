@@ -136,7 +136,7 @@ fn Machine::backtrack(self : Machine, choice_barrier : Int) -> Bool {
 /// Executes one goal frame. Returns `false` when the goal fails, which makes
 /// the caller backtrack.
 fn Machine::execute(self : Machine, fr : Frame) -> Bool {
-  let g = deref(fr.goal, self.subst)
+  let g = fr.goal.deref(self.subst)
   match g {
     Atom(name) =>
       match name {
@@ -223,7 +223,7 @@ fn Machine::try_clauses(
   for i in idx..<cls.length() {
     let cl = cls[i]
     let (head, body) = fresh_rename(cl)
-    match unify(g, head, self.subst) {
+    match g.unify(head, self.subst) {
       None => continue
       Some(s2) => {
         if i + 1 < cls.length() {
@@ -346,7 +346,7 @@ pub fn Answer::from_subst(subst : Subst, goals : Array[Term]) -> Answer {
   let bindings : Map[String, Term] = Map([])
   for v in collect_query_vars(goals) {
     if v.name != "" && !v.name.has_prefix("_") && !bindings.contains(v.name) {
-      let value = resolve(Var(v), subst)
+      let value = Var(v).resolve(subst)
       match value {
         Var(v2) => if v2.id != v.id { bindings[v.name] = value }
         _ => bindings[v.name] = value

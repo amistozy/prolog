@@ -19,13 +19,7 @@
 /// }
 /// ```
 pub fn Term::compare_terms(self : Term, other : Term) -> Int {
-  compare_terms(self, other)
-}
-
-///|
-/// Internal comparison (no receiver), used throughout the engine.
-fn compare_terms(a : Term, b : Term) -> Int {
-  match (a, b) {
+  match (self, other) {
     (Var(x), Var(y)) =>
       if x.id == y.id {
         0
@@ -48,7 +42,7 @@ fn compare_terms(a : Term, b : Term) -> Int {
     (Str(x), Str(y)) => compare_strings(x, y)
     (Str(_), _) => -1
     (_, Str(_)) => 1
-    _ => compare_compounds(a, b)
+    _ => compare_compounds(self, other)
   }
 }
 
@@ -95,7 +89,7 @@ fn compare_args(a : Term, b : Term) -> Int {
   }
   let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
   for i in 0..<n {
-    let c = compare_terms(xs[i], ys[i])
+    let c = xs[i].compare_terms(ys[i])
     if c != 0 {
       return c
     }

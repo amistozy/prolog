@@ -18,7 +18,7 @@ test "unify: variables, occurs check, chains" {
   // proper list unifies with a cons chain
   let t = variable("T")
   let s2 = match
-    unify(list([int(1), int(2)]), cons(int(1), cons(int(2), t)), Map([])) {
+    list([int(1), int(2)]).unify(cons(int(1), cons(int(2), t)), Map([])) {
     Some(s2) => s2
     None => abort("list vs chain should unify")
   }
@@ -47,28 +47,27 @@ test "unify: variables, occurs check, chains" {
 test "unify: List tail unification" {
   // [1 | T] = [1, 2, 3] binds T to [2, 3]
   let t = variable("T")
-  let s = match
-    unify(cons(int(1), t), list([int(1), int(2), int(3)]), Map([])) {
+  let s = match cons(int(1), t).unify(list([int(1), int(2), int(3)]), Map([])) {
     Some(s) => s
     None => abort("should unify")
   }
-  assert_eq(deref(t, s).to_string(), "[2, 3]")
+  assert_eq(t.deref(s).to_string(), "[2, 3]")
   // [1, 2] = [1 | T] binds T to [2]
   let t2 = variable("T")
-  let s2 = match unify(list([int(1), int(2)]), cons(int(1), t2), Map([])) {
+  let s2 = match list([int(1), int(2)]).unify(cons(int(1), t2), Map([])) {
     Some(s2) => s2
     None => abort("should unify")
   }
-  assert_eq(deref(t2, s2).to_string(), "[2]")
+  assert_eq(t2.deref(s2).to_string(), "[2]")
   // 3-element list vs 1-element chain binds head and tail
   let t3 = variable("T")
   let x3 = variable("X")
-  let s3 = match unify(list([int(1), int(2), int(3)]), cons(x3, t3), Map([])) {
+  let s3 = match list([int(1), int(2), int(3)]).unify(cons(x3, t3), Map([])) {
     Some(s3) => s3
     None => abort("should unify")
   }
-  assert_eq(deref(x3, s3).to_string(), "1")
-  assert_eq(deref(t3, s3).to_string(), "[2, 3]")
+  assert_eq(x3.deref(s3).to_string(), "1")
+  assert_eq(t3.deref(s3).to_string(), "[2, 3]")
 }
 
 ///|

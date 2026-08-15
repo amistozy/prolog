@@ -7,7 +7,7 @@
 /// division, like ISO), `//` (integer division), `div` (floor division),
 /// `mod` (floored remainder), `abs`.
 fn eval_arith(t : Term, subst : Subst) -> Term? {
-  match deref(t, subst) {
+  match t.deref(subst) {
     Int(i) => Some(Int(i))
     Float(d) => Some(Float(d))
     Compound("-", [x]) =>
@@ -132,7 +132,7 @@ fn identical_terms(deref_a : Term, deref_b : Term) -> Bool {
 /// Type tests: `var`, `nonvar`, `atom`, `integer`, `float`, `number`,
 /// `atomic`, `string`, `compound`, `list`.
 fn type_test(name : String, g : Term, subst : Subst) -> Bool {
-  let t = deref(g, subst)
+  let t = g.deref(subst)
   match name {
     "var" => t is Var(_)
     "nonvar" => !(t is Var(_))
@@ -159,14 +159,14 @@ fn Machine::run_builtin(
 ) -> Bool? {
   match (name, args.length()) {
     ("=", 2) => Some(self.unify_goal(args[0], args[1]))
-    ("\\=", 2) => Some(unify(args[0], args[1], self.subst) is None)
+    ("\\=", 2) => Some(args[0].unify(args[1], self.subst) is None)
     ("==", 2) =>
       Some(
-        identical_terms(deref(args[0], self.subst), deref(args[1], self.subst)),
+        identical_terms(args[0].deref(self.subst), args[1].deref(self.subst)),
       )
     ("\\==", 2) =>
       Some(
-        !identical_terms(deref(args[0], self.subst), deref(args[1], self.subst)),
+        !identical_terms(args[0].deref(self.subst), args[1].deref(self.subst)),
       )
     ("is", 2) =>
       match eval_arith(args[1], self.subst) {
@@ -190,11 +190,11 @@ fn Machine::run_builtin(
       Some(true)
     }
     ("write", 1) => {
-      println(resolve(args[0], self.subst))
+      println(args[0].resolve(self.subst))
       Some(true)
     }
     ("writeln", 1) => {
-      println(resolve(args[0], self.subst))
+      println(args[0].resolve(self.subst))
       Some(true)
     }
     ("var", 1)
@@ -223,25 +223,23 @@ fn Machine::run_builtin(
       Some(true)
     }
     ("findall", 3) => Some(self.findall_(args[0], args[1], args[2]))
-    ("forall", 2) => Some(self.not_(and_(args[0], not_(args[1]))))
+    ("forall", 2) => Some(self.not_(args[0].and_(args[1].not_())))
     ("functor", 3) => Some(self.functor_(args[0], args[1], args[2]))
     ("arg", 3) => Some(self.arg_(args[0], args[1], args[2]))
     ("=..", 2) => Some(self.univ_(args[0], args[1]))
-    ("ground", 1) => Some(is_ground(resolve(args[0], self.subst)))
+    ("ground", 1) => Some(is_ground(args[0].resolve(self.subst)))
     ("compare", 3) => {
-      let c = compare_terms(
-        resolve(args[1], self.subst),
-        resolve(args[2], self.subst),
-      )
+      let c = args[1]
+        .resolve(self.subst)
+        .compare_terms(args[2].resolve(self.subst))
       let ord = if c < 0 { "<" } else if c > 0 { ">" } else { "=" }
       Some(self.unify_goal(args[0], atom(ord)))
     }
     ("sort", 2) | ("msort", 2) => Some(self.sort_(name, args[0], args[1]))
     ("@<", 2) | ("@>", 2) | ("@=<", 2) | ("@>=", 2) => {
-      let c = compare_terms(
-        resolve(args[0], self.subst),
-        resolve(args[1], self.subst),
-      )
+      let c = args[0]
+        .resolve(self.subst)
+        .compare_terms(args[1].resolve(self.subst))
       Some(
         match name {
           "@<" => c < 0
@@ -252,7 +250,7 @@ fn Machine::run_builtin(
       )
     }
     ("atom_length", 2) =>
-      match deref(args[0], self.subst) {
+      match args[0].deref(self.subst) {
         Atom(s) => Some(self.unify_goal(args[1], int(s.length())))
         Str(s) => Some(self.unify_goal(args[1], int(s.length())))
         _ => Some(false)
@@ -267,7 +265,7 @@ fn Machine::run_builtin(
 /// Unifies two terms under the machine's substitution, updating it on
 /// success.
 fn Machine::unify_goal(self : Machine, a : Term, b : Term) -> Bool {
-  match unify(a, b, self.subst) {
+  match a.unify(b, self.subst) {
     Some(s) => {
       self.subst = s
       true

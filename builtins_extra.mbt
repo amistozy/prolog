@@ -23,7 +23,7 @@ fn Machine::findall_(
   for ;; {
     match self.step(saved_stack, cb) {
       Some(s) => {
-        let t = resolve(template, s)
+        let t = template.resolve(s)
         results.push(fresh_vars(t))
       }
       None => break
@@ -52,7 +52,7 @@ fn fresh_vars(t : Term) -> Term {
 /// `functor(T, F, N)`: the name/arity of a ground term, or builds a term
 /// from a name and arity when `T` is a variable.
 fn Machine::functor_(self : Machine, t : Term, f : Term, n : Term) -> Bool {
-  match deref(t, self.subst) {
+  match t.deref(self.subst) {
     Atom(name) => self.unify_both(f, atom(name), n, int(0))
     Int(i) => self.unify_both(f, Int(i), n, int(0))
     Float(d) => self.unify_both(f, Float(d), n, int(0))
@@ -61,8 +61,8 @@ fn Machine::functor_(self : Machine, t : Term, f : Term, n : Term) -> Bool {
     Compound(name, args) =>
       self.unify_both(f, atom(name), n, int(args.length()))
     Var(_) => {
-      let f = deref(f, self.subst)
-      let n = deref(n, self.subst)
+      let f = f.deref(self.subst)
+      let n = n.deref(self.subst)
       match (f, n) {
         (Atom(name), Int(0)) => self.unify_goal(t, atom(name))
         (Int(i), Int(0)) => self.unify_goal(t, Int(i))
@@ -90,10 +90,10 @@ fn Machine::unify_both(
   b : Term,
   vb : Term,
 ) -> Bool {
-  match unify(a, va, self.subst) {
+  match a.unify(va, self.subst) {
     None => false
     Some(s2) =>
-      match unify(b, vb, s2) {
+      match b.unify(vb, s2) {
         None => false
         Some(s3) => {
           self.subst = s3
@@ -106,7 +106,7 @@ fn Machine::unify_both(
 ///|
 /// `arg(N, T, A)`: the N-th argument (1-based) of a compound term or list.
 fn Machine::arg_(self : Machine, i : Term, t : Term, a : Term) -> Bool {
-  match (deref(i, self.subst), deref(t, self.subst)) {
+  match (i.deref(self.subst), t.deref(self.subst)) {
     (Int(k), Compound(_, args)) if k >= 1 && k <= args.length() =>
       self.unify_goal(a, args[k - 1])
     (Int(k), List(xs)) if k >= 1 && k <= xs.length() =>
@@ -118,7 +118,7 @@ fn Machine::arg_(self : Machine, i : Term, t : Term, a : Term) -> Bool {
 ///|
 /// `T =.. L`: converts between a term and its functor-and-arguments list.
 fn Machine::univ_(self : Machine, t : Term, l : Term) -> Bool {
-  match deref(t, self.subst) {
+  match t.deref(self.subst) {
     Atom(name) => self.unify_goal(l, list([atom(name)]))
     Int(i) => self.unify_goal(l, list([Int(i)]))
     Float(d) => self.unify_goal(l, list([Float(d)]))
@@ -142,7 +142,7 @@ fn Machine::univ_(self : Machine, t : Term, l : Term) -> Bool {
       self.unify_goal(l, list(full))
     }
     Var(_) =>
-      match list_parts(deref(l, self.subst)) {
+      match list_parts(l.deref(self.subst)) {
         Some((elems, tail)) if tail is Atom("[]") && elems.length() > 0 =>
           match elems[0] {
             Atom(name) => {
@@ -176,14 +176,14 @@ fn is_ground(t : Term) -> Bool {
 /// `sort(L, S)` / `msort(L, S)`: sort a proper list in standard order;
 /// `sort` also removes duplicates.
 fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
-  match list_parts(deref(l, self.subst)) {
+  match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
-      let resolved = elems.map(fn(x) { resolve(x, self.subst) })
-      resolved.sort_by(compare_terms)
+      let resolved = elems.map(fn(x) { x.resolve(self.subst) })
+      resolved.sort_by(fn(a, b) { a.compare_terms(b) })
       let dedup = if name == "sort" {
         let out : Array[Term] = []
         for x in resolved {
-          if out.length() == 0 || compare_terms(out[out.length() - 1], x) != 0 {
+          if out.length() == 0 || out[out.length() - 1].compare_terms(x) != 0 {
             out.push(x)
           }
         }
@@ -207,7 +207,7 @@ fn Machine::atom_concat_(
   c : Term,
   mark : Int,
 ) -> Bool {
-  match (deref(a, self.subst), deref(b, self.subst), deref(c, self.subst)) {
+  match (a.deref(self.subst), b.deref(self.subst), c.deref(self.subst)) {
     (Atom(x), Atom(y), _) => self.unify_goal(c, atom(x + y))
     (_, _, Atom(z)) => {
       let n = z.length()
@@ -219,7 +219,7 @@ fn Machine::atom_concat_(
         self.choices.push({
           goals: self.stack,
           subst: self.subst,
-          alt: Goal(goal=and_(eq(a, atom(prefix)), eq(b, atom(suffix))), mark~),
+          alt: Goal(goal=a.eq(atom(prefix)).and_(b.eq(atom(suffix))), mark~),
         })
       }
       self.unify_goal(a, atom("")) && self.unify_goal(b, atom(z))

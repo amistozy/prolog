@@ -107,7 +107,7 @@ fn length_clauses() -> Array[Clause] {
     fact(compound("length", [empty_list(), Int(0)])),
     rule(
       compound("length", [cons(variable("_"), t), n]),
-      and_(compound("length", [t, n1]), is_(n, Compound("+", [n1, Int(1)]))),
+      compound("length", [t, n1]).and_(n.is_(Compound("+", [n1, Int(1)]))),
     ),
   ]
 }
@@ -124,8 +124,7 @@ fn reverse_clauses() -> Array[Clause] {
     fact(compound("reverse", [empty_list(), empty_list()])),
     rule(
       compound("reverse", [h | t, r]),
-      and_(
-        compound("reverse", [t, r1]),
+      compound("reverse", [t, r1]).and_(
         compound("append", [r1, cons(h, empty_list()), r]),
       ),
     ),
@@ -141,13 +140,12 @@ fn between_clauses() -> Array[Clause] {
   let x = variable("X")
   let l1 = variable("L1")
   [
-    rule(compound("between", [l, u, x]), and_(eq(x, l), Compound("<=", [l, u]))),
+    rule(compound("between", [l, u, x]), x.eq(l).and_(Compound("<=", [l, u]))),
     rule(
       compound("between", [l, u, x]),
-      and_(
-        and_(Compound("<", [l, u]), is_(l1, Compound("+", [l, Int(1)]))),
-        compound("between", [l1, u, x]),
-      ),
+      Compound("<", [l, u])
+      .and_(l1.is_(Compound("+", [l, Int(1)])))
+      .and_(compound("between", [l1, u, x])),
     ),
   ]
 }
@@ -172,12 +170,12 @@ fn nth_clauses() -> Array[Clause] {
     fact(compound("nth0", [int(0), cons(i, t), i])),
     rule(
       compound("nth0", [i2, cons(variable("_"), t2), x2]),
-      and_(compound("nth0", [m, t2, x2]), is_(i2, Compound("+", [m, Int(1)]))),
+      compound("nth0", [m, t2, x2]).and_(i2.is_(Compound("+", [m, Int(1)]))),
     ),
     fact(compound("nth1", [int(1), cons(i3, t), i3])),
     rule(
       compound("nth1", [i4, cons(variable("_"), t4), x4]),
-      and_(compound("nth1", [m2, t4, x4]), is_(i4, Compound("+", [m2, Int(1)]))),
+      compound("nth1", [m2, t4, x4]).and_(i4.is_(Compound("+", [m2, Int(1)]))),
     ),
   ]
 }
@@ -208,7 +206,7 @@ fn sum_list_clauses() -> Array[Clause] {
     fact(compound("sum_list", [empty_list(), int(0)])),
     rule(
       compound("sum_list", [cons(x, t), s]),
-      and_(compound("sum_list", [t, s1]), is_(s, Compound("+", [s1, x]))),
+      compound("sum_list", [t, s1]).and_(s.is_(Compound("+", [s1, x]))),
     ),
   ]
 }
@@ -225,7 +223,7 @@ fn max_list_clauses() -> Array[Clause] {
     fact(compound("max_list", [cons(x, empty_list()), x])),
     rule(
       compound("max_list", [cons(x, t), m]),
-      and_(compound("max_list", [t, m1]), is_(m, Compound("max", [x, m1]))),
+      compound("max_list", [t, m1]).and_(m.is_(Compound("max", [x, m1]))),
     ),
   ]
 }
@@ -242,7 +240,7 @@ fn min_list_clauses() -> Array[Clause] {
     fact(compound("min_list", [cons(x, empty_list()), x])),
     rule(
       compound("min_list", [cons(x, t), m]),
-      and_(compound("min_list", [t, m1]), is_(m, Compound("min", [x, m1]))),
+      compound("min_list", [t, m1]).and_(m.is_(Compound("min", [x, m1]))),
     ),
   ]
 }
@@ -281,10 +279,9 @@ fn flatten_clauses() -> Array[Clause] {
     fact(compound("flatten", [empty_list(), empty_list()])),
     rule(
       compound("flatten", [cons(h, t), f]),
-      and_(
-        and_(compound("flatten", [h, f1]), compound("flatten", [t, f2])),
-        compound("append", [f1, f2, f]),
-      ),
+      compound("flatten", [h, f1])
+      .and_(compound("flatten", [t, f2]))
+      .and_(compound("append", [f1, f2, f])),
     ),
     rule(
       compound("flatten", [x, cons(x, empty_list())]),
@@ -305,7 +302,7 @@ fn permutation_clauses() -> Array[Clause] {
     fact(compound("permutation", [empty_list(), empty_list()])),
     rule(
       compound("permutation", [l, cons(h, t)]),
-      and_(compound("select", [h, l, r]), compound("permutation", [r, t])),
+      compound("select", [h, l, r]).and_(compound("permutation", [r, t])),
     ),
   ]
 }
