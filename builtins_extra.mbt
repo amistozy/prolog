@@ -166,8 +166,8 @@ fn Machine::univ_(self : Machine, t : Term, l : Term) -> Bool {
 fn is_ground(t : Term) -> Bool {
   match t {
     Var(_) => false
-    List(xs) => xs.all(fn(x) { is_ground(x) })
-    Compound(_, args) => args.all(fn(x) { is_ground(x) })
+    List(xs) => xs.all(is_ground)
+    Compound(_, args) => args.all(is_ground)
     _ => true
   }
 }
@@ -179,7 +179,7 @@ fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
   match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
       let resolved = elems.map(fn(x) { x.resolve(self.subst) })
-      resolved.sort_by(fn(a, b) { a.compare_terms(b) })
+      resolved.sort_by(Term::compare_terms)
       let dedup = if name == "sort" {
         let out : Array[Term] = []
         for x in resolved {
