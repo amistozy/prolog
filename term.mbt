@@ -211,7 +211,7 @@ pub impl Eq for Term with fn equal(a, b) {
       xs.length() == ys.length() &&
       xs
       .zip(ys)
-      .all(fn(p) {
+      .all(p => {
         let (a, b) = p
         a == b
       })
@@ -220,7 +220,7 @@ pub impl Eq for Term with fn equal(a, b) {
       a1.length() == a2.length() &&
       a1
       .zip(a2)
-      .all(fn(p) {
+      .all(p => {
         let (a, b) = p
         a == b
       })
@@ -322,6 +322,6 @@ fn render_compound(name : String, args : Array[Term]) -> String {
   } else if name == "\\+" && args.length() == 1 {
     "\\+ \{args[0]}"
   } else {
-    "\{name}(\{args.map(fn (x) { "\{x}" }).join(", ")})"
+    "\{name}(\{args.map(x => "\{x}").join(", ")})"
   }
 }

@@ -178,7 +178,7 @@ fn is_ground(t : Term) -> Bool {
 fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
   match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
-      let resolved = elems.map(fn(x) { x.resolve(self.subst) })
+      let resolved = elems.map(x => x.resolve(self.subst))
       resolved.sort_by(Term::compare_terms)
       let dedup = if name == "sort" {
         let out : Array[Term] = []

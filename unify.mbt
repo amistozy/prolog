@@ -46,8 +46,8 @@ pub fn Term::deref(self : Term, s : Subst) -> Term {
 pub fn Term::resolve(self : Term, s : Subst) -> Term {
   match self.deref(s) {
     Var(v) => Var(v)
-    List(xs) => List(xs.map(fn(x) { x.resolve(s) }))
-    Compound(f, args) => Compound(f, args.map(fn(x) { x.resolve(s) }))
+    List(xs) => List(xs.map(x => x.resolve(s)))
+    Compound(f, args) => Compound(f, args.map(x => x.resolve(s)))
     other => other
   }
 }
@@ -181,8 +181,8 @@ fn bind(s : Subst, id : Int, t : Term) -> Subst? {
 fn occurs(id : Int, t : Term, s : Subst) -> Bool {
   match t.deref(s) {
     Var(v) => v.id == id
-    List(xs) => xs.any(fn(x) { occurs(id, x, s) })
-    Compound(_, args) => args.any(fn(x) { occurs(id, x, s) })
+    List(xs) => xs.any(x => occurs(id, x, s))
+    Compound(_, args) => args.any(x => occurs(id, x, s))
     _ => false
   }
 }
@@ -262,8 +262,8 @@ fn rename_vars(t : Term, map : Map[Int, Int]) -> Term {
         Some(new_id) => Var({ id: new_id, name: v.name })
         None => t
       }
-    List(xs) => List(xs.map(fn(x) { rename_vars(x, map) }))
-    Compound(f, args) => Compound(f, args.map(fn(x) { rename_vars(x, map) }))
+    List(xs) => List(xs.map(x => rename_vars(x, map)))
+    Compound(f, args) => Compound(f, args.map(x => rename_vars(x, map)))
     _ => t
   }
 }

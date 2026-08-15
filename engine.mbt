@@ -289,7 +289,7 @@ pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] 
   for i = goals.length() - 1; i >= 0; i = i - 1 {
     m.push_goal(goals[i], 0)
   }
-  Iter::new(fn() -> Subst? {
+  Iter::new(() => {
     match m.step(FNil, -1) {
       Some(s) => Some(s.copy())
       None => None
@@ -361,7 +361,7 @@ pub fn Answer::from_subst(subst : Subst, goals : Array[Term]) -> Answer {
 pub impl Show for Answer with fn to_string(self) {
   let parts = self.bindings
     .to_array()
-    .map(fn(kv) {
+    .map(kv => {
       let (k, v) = kv
       "\{k} = \{v}"
     })
@@ -390,7 +390,7 @@ pub impl Show for Answer with fn to_string(self) {
 /// }
 /// ```
 pub fn Program::solve(self : Program, goals : Array[Term]) -> Iter[Answer] {
-  self.solve_subst(goals).map(fn(s) { Answer::from_subst(s, goals) })
+  self.solve_subst(goals).map(s => Answer::from_subst(s, goals))
 }
 
 ///|
