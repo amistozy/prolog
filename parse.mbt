@@ -51,8 +51,8 @@ pub fn parse_clause(text : String) -> Clause raise ParseError {
   }
   expect_eof(p)
   match t {
-    Compound(":-", [head, body]) => rule(head, body)
-    _ => fact(t)
+    Compound(":-", [head, body]) => Clause(head, body)
+    _ => Clause::fact(t)
   }
 }
 
@@ -88,11 +88,11 @@ pub fn parse_program(text : String) -> Program raise ParseError {
       _ => ()
     }
     match t {
-      Compound(":-", [head, body]) => clauses.push(rule(head, body))
-      _ => clauses.push(fact(t))
+      Compound(":-", [head, body]) => clauses.push(Clause(head, body))
+      _ => clauses.push(Clause::fact(t))
     }
   }
-  try! program(clauses)
+  try! Program(clauses)
 }
 
 ///|

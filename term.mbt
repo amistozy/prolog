@@ -51,6 +51,25 @@ pub(all) enum Term {
 let var_counter : Ref[Int] = { val: 0 }
 
 ///|
+/// Parses a term from Prolog syntax: `Term("parent(john, X)")`,
+/// `Term("[1, 2 | T]")`, `Term("X is 2 * 3")`. Variables with the same name
+/// share one variable, like in Prolog source text.
+///
+/// ```mbt check
+/// test {
+///   inspect(
+///     @prolog.Term("parent(john, X)").to_string(),
+///     content="parent(john, X)",
+///   )
+///   inspect(@prolog.Term("[1, 2]").to_string(), content="[1, 2]")
+///   inspect(@prolog.Term("X + 1").to_string(), content="(X + 1)")
+/// }
+/// ```
+pub fn Term::Term(text : String) -> Term raise ParseError {
+  parse_term(text)
+}
+
+///|
 /// Allocates a fresh logic variable with the given display `name`.
 ///
 /// ```mbt check

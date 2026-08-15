@@ -379,9 +379,9 @@ pub impl Show for Answer with fn to_string(self) {
 ///
 /// ```mbt check
 /// test {
-///   let p = program([
-///     fact(compound("parent", [atom("john"), atom("mary")])),
-///     fact(compound("parent", [atom("john"), atom("jane")])),
+///   let p = Program([
+///     Clause::fact(compound("parent", [atom("john"), atom("mary")])),
+///     Clause::fact(compound("parent", [atom("john"), atom("jane")])),
 ///   ])
 ///   let x = variable("X")
 ///   let answers = p.solve([compound("parent", [x, variable("_")])]).to_array()

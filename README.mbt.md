@@ -14,10 +14,10 @@ conjunction `(a, b)`, and answer bindings follow the same shape.
 ///|
 test {
   // 1. build a program from facts and rules
-  let p = program([
-    fact(compound("parent", [atom("john"), atom("mary")])),
-    fact(compound("parent", [atom("john"), atom("jane")])),
-    fact(compound("parent", [atom("mary"), atom("bob")])),
+  let p = Program([
+    Clause::fact(compound("parent", [atom("john"), atom("mary")])),
+    Clause::fact(compound("parent", [atom("john"), atom("jane")])),
+    Clause::fact(compound("parent", [atom("mary"), atom("bob")])),
   ])
 
   // 2. query it with logic variables
@@ -57,6 +57,9 @@ using @prolog {
 ```mbt check
 ///|
 test {
+  // Term("...") parses Prolog syntax directly
+  assert_eq(Term("parent(john, X)").to_string(), "parent(john, X)")
+  assert_eq(Term("[1, 2 | T]").to_string(), "[1, 2 | T]")
   let x = variable("X")
   assert_eq(x.to_string(), "X")
   assert_eq(atom("john").to_string(), "john")
@@ -84,13 +87,13 @@ test {
   let x = variable("X")
   let y = variable("Y")
   let z = variable("Z")
-  let p = program([
-    fact(compound("parent", [atom("john"), atom("mary")])),
-    fact(compound("parent", [atom("mary"), atom("bob")])),
+  let p = Program([
+    Clause::fact(compound("parent", [atom("john"), atom("mary")])),
+    Clause::fact(compound("parent", [atom("mary"), atom("bob")])),
     // ancestor(X, Y) :- parent(X, Y).
-    rule(compound("ancestor", [x, y]), compound("parent", [x, y])),
+    Clause(compound("ancestor", [x, y]), compound("parent", [x, y])),
     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-    rule(
+    Clause(
       compound("ancestor", [x, y]),
       compound("parent", [x, z]).and_(compound("ancestor", [z, y])),
     ),
@@ -119,9 +122,9 @@ as `X = john, Y = mary`.
 ```mbt check
 ///|
 test {
-  let p = program([
-    fact(compound("parent", [atom("john"), atom("mary")])),
-    fact(compound("parent", [atom("mary"), atom("bob")])),
+  let p = Program([
+    Clause::fact(compound("parent", [atom("john"), atom("mary")])),
+    Clause::fact(compound("parent", [atom("mary"), atom("bob")])),
   ])
   let x = variable("X")
   let y = variable("Y")
@@ -190,7 +193,7 @@ relational:
 ```mbt check
 ///|
 test {
-  let lib = stdlib()
+  let lib = Program::stdlib()
   let x = variable("X")
   let answers = lib
     .solve([compound("member", [x, list([int(1), int(2), int(3)])])])
@@ -214,9 +217,9 @@ Solutions are produced lazily, so infinite programs can be explored with
 ///|
 test {
   let n = variable("N")
-  let p = program([
-    fact(compound("nat", [int(0)])),
-    rule(compound("nat", [compound("s", [n])]), compound("nat", [n])),
+  let p = Program([
+    Clause::fact(compound("nat", [int(0)])),
+    Clause(compound("nat", [compound("s", [n])]), compound("nat", [n])),
   ])
   let x = variable("X")
   let first3 = p.solve([compound("nat", [x])]).take(3).to_array()

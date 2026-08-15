@@ -9,7 +9,7 @@
 ///
 /// ```mbt check
 /// test {
-///   let p = stdlib()
+///   let p = Program::stdlib()
 ///   let x = variable("X")
 ///   let answers = p
 ///     .solve([compound("member", [x, list([int(1), int(2), int(3)])])])
@@ -19,7 +19,7 @@
 ///   assert_eq(answers[2].to_string(), "X = 3")
 /// }
 /// ```
-pub fn stdlib() -> Program {
+pub fn Program::stdlib() -> Program {
   let clauses : Array[Clause] = []
   for c in member_clauses() {
     clauses.push(c)
@@ -60,7 +60,7 @@ pub fn stdlib() -> Program {
   for c in permutation_clauses() {
     clauses.push(c)
   }
-  try! program(clauses)
+  try! Program(clauses)
 }
 
 ///|
@@ -71,8 +71,8 @@ fn member_clauses() -> Array[Clause] {
   let x2 = variable("X")
   let t2 = variable("T")
   [
-    fact(compound("member", [x, cons(x, t)])),
-    rule(
+    Clause::fact(compound("member", [x, cons(x, t)])),
+    Clause(
       compound("member", [x2, cons(variable("_"), t2)]),
       compound("member", [x2, t2]),
     ),
@@ -88,8 +88,8 @@ fn append_clauses() -> Array[Clause] {
   let l2 = variable("L")
   let r = variable("R")
   [
-    fact(compound("append", [empty_list(), l, l])),
-    rule(
+    Clause::fact(compound("append", [empty_list(), l, l])),
+    Clause(
       compound("append", [cons(h, t), l2, cons(h, r)]),
       compound("append", [t, l2, r]),
     ),
@@ -104,8 +104,8 @@ fn length_clauses() -> Array[Clause] {
   let n = variable("N")
   let n1 = variable("N1")
   [
-    fact(compound("length", [empty_list(), Int(0)])),
-    rule(
+    Clause::fact(compound("length", [empty_list(), Int(0)])),
+    Clause(
       compound("length", [cons(variable("_"), t), n]),
       compound("length", [t, n1]).and_(n.is_(Compound("+", [n1, Int(1)]))),
     ),
@@ -121,8 +121,8 @@ fn reverse_clauses() -> Array[Clause] {
   let r = variable("R")
   let r1 = variable("R1")
   [
-    fact(compound("reverse", [empty_list(), empty_list()])),
-    rule(
+    Clause::fact(compound("reverse", [empty_list(), empty_list()])),
+    Clause(
       compound("reverse", [h | t, r]),
       compound("reverse", [t, r1]).and_(
         compound("append", [r1, cons(h, empty_list()), r]),
@@ -140,8 +140,8 @@ fn between_clauses() -> Array[Clause] {
   let x = variable("X")
   let l1 = variable("L1")
   [
-    rule(compound("between", [l, u, x]), x.eq(l).and_(Compound("<=", [l, u]))),
-    rule(
+    Clause(compound("between", [l, u, x]), x.eq(l).and_(Compound("<=", [l, u]))),
+    Clause(
       compound("between", [l, u, x]),
       Compound("<", [l, u])
       .and_(l1.is_(Compound("+", [l, Int(1)])))
@@ -167,13 +167,13 @@ fn nth_clauses() -> Array[Clause] {
   let t4 = variable("T")
   let x4 = variable("X")
   [
-    fact(compound("nth0", [int(0), cons(i, t), i])),
-    rule(
+    Clause::fact(compound("nth0", [int(0), cons(i, t), i])),
+    Clause(
       compound("nth0", [i2, cons(variable("_"), t2), x2]),
       compound("nth0", [m, t2, x2]).and_(i2.is_(Compound("+", [m, Int(1)]))),
     ),
-    fact(compound("nth1", [int(1), cons(i3, t), i3])),
-    rule(
+    Clause::fact(compound("nth1", [int(1), cons(i3, t), i3])),
+    Clause(
       compound("nth1", [i4, cons(variable("_"), t4), x4]),
       compound("nth1", [m2, t4, x4]).and_(i4.is_(Compound("+", [m2, Int(1)]))),
     ),
@@ -187,8 +187,8 @@ fn last_clauses() -> Array[Clause] {
   let t = variable("T")
   let x2 = variable("X")
   [
-    fact(compound("last", [cons(x, empty_list()), x])),
-    rule(
+    Clause::fact(compound("last", [cons(x, empty_list()), x])),
+    Clause(
       compound("last", [cons(variable("_"), t), x2]),
       compound("last", [t, x2]),
     ),
@@ -203,8 +203,8 @@ fn sum_list_clauses() -> Array[Clause] {
   let s = variable("S")
   let s1 = variable("S1")
   [
-    fact(compound("sum_list", [empty_list(), int(0)])),
-    rule(
+    Clause::fact(compound("sum_list", [empty_list(), int(0)])),
+    Clause(
       compound("sum_list", [cons(x, t), s]),
       compound("sum_list", [t, s1]).and_(s.is_(Compound("+", [s1, x]))),
     ),
@@ -220,8 +220,8 @@ fn max_list_clauses() -> Array[Clause] {
   let m = variable("M")
   let m1 = variable("M1")
   [
-    fact(compound("max_list", [cons(x, empty_list()), x])),
-    rule(
+    Clause::fact(compound("max_list", [cons(x, empty_list()), x])),
+    Clause(
       compound("max_list", [cons(x, t), m]),
       compound("max_list", [t, m1]).and_(m.is_(Compound("max", [x, m1]))),
     ),
@@ -237,8 +237,8 @@ fn min_list_clauses() -> Array[Clause] {
   let m = variable("M")
   let m1 = variable("M1")
   [
-    fact(compound("min_list", [cons(x, empty_list()), x])),
-    rule(
+    Clause::fact(compound("min_list", [cons(x, empty_list()), x])),
+    Clause(
       compound("min_list", [cons(x, t), m]),
       compound("min_list", [t, m1]).and_(m.is_(Compound("min", [x, m1]))),
     ),
@@ -256,8 +256,8 @@ fn select_clauses() -> Array[Clause] {
   let t2 = variable("T")
   let r = variable("R")
   [
-    fact(compound("select", [x, cons(x, t), t])),
-    rule(
+    Clause::fact(compound("select", [x, cons(x, t), t])),
+    Clause(
       compound("select", [x2, cons(h, t2), cons(h, r)]),
       compound("select", [x2, t2, r]),
     ),
@@ -276,14 +276,14 @@ fn flatten_clauses() -> Array[Clause] {
   let f2 = variable("F2")
   let x = variable("X")
   [
-    fact(compound("flatten", [empty_list(), empty_list()])),
-    rule(
+    Clause::fact(compound("flatten", [empty_list(), empty_list()])),
+    Clause(
       compound("flatten", [cons(h, t), f]),
       compound("flatten", [h, f1])
       .and_(compound("flatten", [t, f2]))
       .and_(compound("append", [f1, f2, f])),
     ),
-    rule(
+    Clause(
       compound("flatten", [x, cons(x, empty_list())]),
       compound("atomic", [x]),
     ),
@@ -299,8 +299,8 @@ fn permutation_clauses() -> Array[Clause] {
   let t = variable("T")
   let r = variable("R")
   [
-    fact(compound("permutation", [empty_list(), empty_list()])),
-    rule(
+    Clause::fact(compound("permutation", [empty_list(), empty_list()])),
+    Clause(
       compound("permutation", [l, cons(h, t)]),
       compound("select", [h, l, r]).and_(compound("permutation", [r, t])),
     ),

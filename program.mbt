@@ -1,24 +1,33 @@
 ///|
 /// A Prolog clause: `head :- body`.
 ///
-/// - [`fact`] builds a clause with body `true`
-/// - [`rule`] builds `head :- body`, where `body` is a single goal (use
-///   [`and_`] / the `&` operator to build conjunctions)
+/// Build one with the [`Clause`](index.html#clause) constructor or
+/// [`Clause::fact`] (a clause whose body is `true`).
 pub struct Clause {
   head : Term
   body : Term
 } derive(Debug)
 
 ///|
-/// A fact `head.`
-pub fn fact(head : Term) -> Clause {
-  { head, body: Atom("true") }
+/// Builds a rule `head :- body`, where `body` is a single goal (use
+/// [`Term::and_`] / the `&` operator to build conjunctions).
+///
+/// ```mbt check
+/// test {
+///   let x = variable("X")
+///   let c = Clause(compound("p", [x]), compound("q", [x]))
+///   inspect(c.head.to_string(), content="p(X)")
+///   inspect(c.body.to_string(), content="q(X)")
+/// }
+/// ```
+pub fn Clause::Clause(head : Term, body : Term) -> Clause {
+  { head, body }
 }
 
 ///|
-/// A rule `head :- body`.
-pub fn rule(head : Term, body : Term) -> Clause {
-  { head, body }
+/// A fact `head.` (a clause with body `true`).
+pub fn Clause::fact(head : Term) -> Clause {
+  Clause(head, Atom("true"))
 }
 
 ///|
@@ -32,8 +41,8 @@ pub(all) suberror PrologError {
 /// A logic program: a set of clauses indexed by predicate key
 /// (functor name, arity).
 ///
-/// Build one with [`program`] and run queries with [`solve`] or
-/// [`Program::solve`].
+/// Build one with the [`Program`](index.html#program) constructor and run
+/// queries with [`Program::solve`].
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
 } derive(Debug)
@@ -45,10 +54,10 @@ pub struct Program {
 /// test {
 ///   let x = variable("X")
 ///   let y = variable("Y")
-///   let p = program([
-///     fact(compound("parent", [atom("john"), atom("mary")])),
+///   let p = Program([
+///     Clause::fact(compound("parent", [atom("john"), atom("mary")])),
 ///     // ancestor(X, Y) :- parent(X, Y).
-///     rule(compound("ancestor", [x, y]), compound("parent", [x, y])),
+///     Clause(compound("ancestor", [x, y]), compound("parent", [x, y])),
 ///   ])
 ///   let qx = variable("X")
 ///   let answers = p.solve([compound("parent", [qx, variable("_")])]).to_array()
@@ -56,7 +65,7 @@ pub struct Program {
 ///   assert_eq(answers[0].to_string(), "X = john")
 /// }
 /// ```
-pub fn program(clauses : Array[Clause]) -> Program raise PrologError {
+pub fn Program::Program(clauses : Array[Clause]) -> Program raise PrologError {
   let p = { clauses: Map([]) }
   for c in clauses {
     p.add(c)

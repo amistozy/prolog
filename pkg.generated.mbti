@@ -14,8 +14,6 @@ pub fn cons(Term, Term) -> Term
 
 pub fn empty_list() -> Term
 
-pub fn fact(Term) -> Clause
-
 pub fn float(Double) -> Term
 
 pub fn int(Int) -> Term
@@ -29,12 +27,6 @@ pub fn parse_clause(String) -> Clause raise ParseError
 pub fn parse_program(String) -> Program raise ParseError
 
 pub fn parse_term(String) -> Term raise ParseError
-
-pub fn program(Array[Clause]) -> Program raise PrologError
-
-pub fn rule(Term, Term) -> Clause
-
-pub fn stdlib() -> Program
 
 pub fn str(String) -> Term
 
@@ -66,6 +58,8 @@ pub struct Clause {
   head : Term
   body : Term
 } derive(@debug.Debug)
+pub fn Clause::Clause(Term, Term) -> Self
+pub fn Clause::fact(Term) -> Self
 
 type FStack derive(@debug.Debug)
 
@@ -78,11 +72,13 @@ type Parser derive(@debug.Debug)
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
 } derive(@debug.Debug)
+pub fn Program::Program(Array[Clause]) -> Self raise PrologError
 pub fn Program::add(Self, Clause) -> Unit raise PrologError
 pub fn Program::solve(Self, Array[Term]) -> Iter[Answer]
 pub fn Program::solve_all(Self, Array[Term]) -> Array[Answer]
 pub fn Program::solve_first(Self, Array[Term]) -> Answer?
 pub fn Program::solve_subst(Self, Array[Term]) -> Iter[Map[Int, Term]]
+pub fn Program::stdlib() -> Self
 
 pub(all) enum Term {
   Int(Int)
@@ -93,6 +89,7 @@ pub(all) enum Term {
   List(Array[Term])
   Compound(String, Array[Term])
 } derive(@debug.Debug)
+pub fn Term::Term(String) -> Self raise ParseError
 pub fn Term::and_(Self, Self) -> Self
 pub fn Term::compare_terms(Self, Self) -> Int
 pub fn Term::deref(Self, Map[Int, Self]) -> Self

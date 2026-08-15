@@ -31,19 +31,17 @@
 ///   let ax = variable("X")
 ///   let ay = variable("Y")
 ///   let az = variable("Z")
-///   let p = program(
-///     [
-///       fact(compound("parent", [atom("john"), atom("mary")])),
-///       fact(compound("parent", [atom("john"), atom("jane")])),
-///       // ancestor(X, Y) :- parent(X, Y).
-///       rule(compound("ancestor", [ax, ay]), compound("parent", [ax, ay])),
-///       // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-///       rule(
-///         compound("ancestor", [ax, ay]),
-///         compound("parent", [ax, az]).and_(compound("ancestor", [az, ay])),
-///       ),
-///     ],
-///   )
+///   let p = Program([
+///     Clause::fact(compound("parent", [atom("john"), atom("mary")])),
+///     Clause::fact(compound("parent", [atom("john"), atom("jane")])),
+///     // ancestor(X, Y) :- parent(X, Y).
+///     Clause(compound("ancestor", [ax, ay]), compound("parent", [ax, ay])),
+///     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+///     Clause(
+///       compound("ancestor", [ax, ay]),
+///       compound("parent", [ax, az]).and_(compound("ancestor", [az, ay])),
+///     ),
+///   ])
 ///   let qx = variable("X")
 ///   let answers = p.solve([compound("parent", [qx, variable("_")])]).to_array()
 ///   assert_eq(answers.length(), 2)
@@ -54,8 +52,10 @@
 ///
 /// ## Key APIs
 ///
-/// - terms: [`variable`], [`atom`], [`int`], [`list`], [`compound`], [`cons`],
-///   [`list_tail`], [`empty_list`]
-/// - clauses: [`fact`], [`rule`], [`program`]
-/// - queries: [`solve`], [`solve_first`], [`solve_all`], [`Answer`]
+/// - terms: [`Term::Term`] (parses Prolog syntax), [`variable`], [`atom`],
+///   [`int`], [`list`], [`compound`], [`cons`], [`list_tail`], [`empty_list`]
+/// - clauses: [`Clause`], [`Clause::fact`]
+/// - programs: [`Program`], [`Program::stdlib`]
+/// - queries: [`Program::solve`], [`Program::solve_first`], [`Program::solve_all`],
+///   [`Answer`]
 /// - library predicates: [`stdlib`]
