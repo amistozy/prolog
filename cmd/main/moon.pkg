@@ -1,0 +1,5 @@
+// import {
+//   "amistozy/prolog" @lib,
+// }
+
+pkgtype(kind: "executable")
