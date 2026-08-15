@@ -3,86 +3,77 @@
 /// Prolog EDSL.
 ///
 /// Run with `moon run cmd/main`.
+using @prolog {
+  atom,
+  compound,
+  fact,
+  rule,
+  variable,
+  and_,
+  program,
+  list,
+  int,
+  stdlib,
+}
+
+///|
 fn main {
   println("== family ==")
-  let john = @prolog.atom("john")
-  let mary = @prolog.atom("mary")
-  let jane = @prolog.atom("jane")
-  let bob = @prolog.atom("bob")
+  let john = atom("john")
+  let mary = atom("mary")
+  let jane = atom("jane")
+  let bob = atom("bob")
   // a rule's head and body must share the same variable values
-  let rx = @prolog.variable("X")
-  let ry = @prolog.variable("Y")
-  let rz = @prolog.variable("Z")
-  let prog = try! @prolog.program([
-    @prolog.fact(@prolog.compound("parent", [john, mary])),
-    @prolog.fact(@prolog.compound("parent", [john, jane])),
-    @prolog.fact(@prolog.compound("parent", [mary, bob])),
+  let rx = variable("X")
+  let ry = variable("Y")
+  let rz = variable("Z")
+  let prog = try! program([
+    fact(compound("parent", [john, mary])),
+    fact(compound("parent", [john, jane])),
+    fact(compound("parent", [mary, bob])),
     // ancestor(X, Y) :- parent(X, Y).
-    @prolog.rule(
-      @prolog.compound("ancestor", [rx, ry]),
-      @prolog.compound("parent", [rx, ry]),
-    ),
+    rule(compound("ancestor", [rx, ry]), compound("parent", [rx, ry])),
     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-    @prolog.rule(
-      @prolog.compound("ancestor", [rx, ry]),
-      @prolog.and_(
-        @prolog.compound("parent", [rx, rz]),
-        @prolog.compound("ancestor", [rz, ry]),
-      ),
+    rule(
+      compound("ancestor", [rx, ry]),
+      and_(compound("parent", [rx, rz]), compound("ancestor", [rz, ry])),
     ),
   ])
-  let x = @prolog.variable("X")
-  for
-    ans in prog.solve([@prolog.compound("parent", [x, @prolog.variable("_")])]) {
+  let x = variable("X")
+  for ans in prog.solve([compound("parent", [x, variable("_")])]) {
     println(ans)
   }
-  let y = @prolog.variable("Y")
+  let y = variable("Y")
   println("ancestors of bob:")
-  for ans in prog.solve([@prolog.compound("ancestor", [y, bob])]) {
+  for ans in prog.solve([compound("ancestor", [y, bob])]) {
     println(ans)
   }
 
   println("== lists ==")
-  let lib = @prolog.stdlib()
-  let elem = @prolog.variable("E")
+  let lib = stdlib()
+  let elem = variable("E")
   for
     ans in lib.solve([
-      @prolog.compound("member", [
-        elem,
-        @prolog.list([@prolog.int(1), @prolog.int(2), @prolog.int(3)]),
-      ]),
+      compound("member", [elem, list([int(1), int(2), int(3)])]),
     ]) {
     println(ans)
   }
-  let xs = @prolog.variable("XS")
+  let xs = variable("XS")
   for
     ans in lib.solve([
-      @prolog.compound("append", [
-        @prolog.list([@prolog.int(1), @prolog.int(2)]),
-        @prolog.list([@prolog.int(3), @prolog.int(4)]),
-        xs,
-      ]),
+      compound("append", [list([int(1), int(2)]), list([int(3), int(4)]), xs]),
     ]) {
     println(ans)
   }
-  let rev = @prolog.variable("R")
+  let rev = variable("R")
   for
     ans in lib.solve([
-      @prolog.compound("reverse", [
-        @prolog.list([@prolog.int(1), @prolog.int(2), @prolog.int(3)]),
-        rev,
-      ]),
+      compound("reverse", [list([int(1), int(2), int(3)]), rev]),
     ]) {
     println(ans)
   }
-  let n = @prolog.variable("N")
-  for
-    ans in lib.solve([
-      @prolog.compound("length", [
-        @prolog.list([@prolog.atom("a"), @prolog.atom("b")]),
-        n,
-      ]),
-    ]) {
+  let n = variable("N")
+  for ans in lib.solve([compound("length", [list([atom("a"), atom("b")]), n])]) {
     println(ans)
   }
 }

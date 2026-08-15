@@ -34,6 +34,24 @@ test {
 }
 ```
 
+Consumers of the package can drop the `@prolog.` prefix with a `using`
+declaration (types use the `type` keyword):
+
+```mbt nocheck
+///|
+using @prolog {
+  atom,
+  compound,
+  fact,
+  rule,
+  variable,
+  and_,
+  program,
+  solve_first,
+  type PrologError,
+}
+```
+
 ## Terms
 
 ```mbt check
