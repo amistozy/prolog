@@ -1,79 +1,58 @@
 ///|
 /// Demo: a small family database plus list programming, evaluated by the
-/// Prolog EDSL.
+/// Prolog EDSL. The program is written in plain Prolog syntax and parsed
+/// with `parse_program`.
 ///
 /// Run with `moon run cmd/main`.
-using @prolog {
-  atom,
-  compound,
-  fact,
-  rule,
-  variable,
-  and_,
-  program,
-  list,
-  int,
-  stdlib,
-}
+using @prolog {parse_program, parse_term}
 
 ///|
-fn main {
+fn main raise {
+  let family_src =
+    #|parent(john, mary). parent(john, jane). parent(mary, bob).
+    #|ancestor(X, Y) :- parent(X, Y).
+    #|ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+    #|
+  let prog = parse_program(family_src)
   println("== family ==")
-  let john = atom("john")
-  let mary = atom("mary")
-  let jane = atom("jane")
-  let bob = atom("bob")
-  // a rule's head and body must share the same variable values
-  let rx = variable("X")
-  let ry = variable("Y")
-  let rz = variable("Z")
-  let prog = try! program([
-    fact(compound("parent", [john, mary])),
-    fact(compound("parent", [john, jane])),
-    fact(compound("parent", [mary, bob])),
-    // ancestor(X, Y) :- parent(X, Y).
-    rule(compound("ancestor", [rx, ry]), compound("parent", [rx, ry])),
-    // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-    rule(
-      compound("ancestor", [rx, ry]),
-      and_(compound("parent", [rx, rz]), compound("ancestor", [rz, ry])),
-    ),
-  ])
-  let x = variable("X")
-  for ans in prog.solve([compound("parent", [x, variable("_")])]) {
+  for ans in prog.solve([parse_term("parent(X, _)")]) {
     println(ans)
   }
-  let y = variable("Y")
   println("ancestors of bob:")
-  for ans in prog.solve([compound("ancestor", [y, bob])]) {
+  for ans in prog.solve([parse_term("ancestor(Y, bob)")]) {
     println(ans)
   }
 
   println("== lists ==")
-  let lib = stdlib()
-  let elem = variable("E")
-  for
-    ans in lib.solve([
-      compound("member", [elem, list([int(1), int(2), int(3)])]),
-    ]) {
+  let lib_src =
+    #|member(X, [X | _]).
+    #|member(X, [_ | T]) :- member(X, T).
+    #|append([], L, L).
+    #|append([H | T], L, [H | R]) :- append(T, L, R).
+    #|reverse([], []).
+    #|reverse([H | T], R) :- reverse(T, R1), append(R1, [H], R).
+    #|
+  let lib = parse_program(lib_src)
+  for ans in lib.solve([parse_term("member(E, [1, 2, 3])")]) {
     println(ans)
   }
-  let xs = variable("XS")
-  for
-    ans in lib.solve([
-      compound("append", [list([int(1), int(2)]), list([int(3), int(4)]), xs]),
-    ]) {
+  for ans in lib.solve([parse_term("append([1, 2], [3, 4], XS)")]) {
     println(ans)
   }
-  let rev = variable("R")
-  for
-    ans in lib.solve([
-      compound("reverse", [list([int(1), int(2), int(3)]), rev]),
-    ]) {
+  for ans in lib.solve([parse_term("reverse([1, 2, 3], R)")]) {
     println(ans)
   }
-  let n = variable("N")
-  for ans in lib.solve([compound("length", [list([atom("a"), atom("b")]), n])]) {
+  println("== meta ==")
+  for ans in lib.solve([parse_term("findall(X, member(X, [1, 2, 3]), L)")]) {
+    println(ans)
+  }
+  for ans in lib.solve([parse_term("(member(X, [1, 2, 3]) -> X = 9 ; X = 0)")]) {
+    println(ans)
+  }
+  for ans in lib.solve([parse_term("(fail -> X = 9 ; X = 0)")]) {
+    println(ans)
+  }
+  for ans in lib.solve([parse_term("sort([3, 1, 2, 1], S)")]) {
     println(ans)
   }
 }

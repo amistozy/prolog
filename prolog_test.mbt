@@ -321,3 +321,229 @@ test "type tests" {
   let not_list = solve(p, [compound("list", [atom("a")])]).to_array()
   assert_eq(not_list.length(), 0)
 }
+
+///|
+test "meta predicates: findall, once, forall, repeat" {
+  let p = try! program([
+    fact(compound("color", [atom("red")])),
+    fact(compound("color", [atom("green")])),
+    fact(compound("color", [atom("blue")])),
+  ])
+  // findall collects all solutions with fresh variables
+  let x = variable("X")
+  let l = variable("L")
+  let fa = solve(p, [compound("findall", [x, compound("color", [x]), l])]).to_array()
+  assert_eq(fa.length(), 1)
+  assert_eq(fa[0].to_string(), "L = [red, green, blue]")
+  // findall with an empty solution set
+  let none = solve(p, [
+    compound("findall", [x, compound("color", [atom("nope")]), l]),
+  ]).to_array()
+  assert_eq(none[0].to_string(), "L = []")
+  // once keeps the first solution
+  let once_ans = solve(p, [compound("once", [compound("color", [x])])]).to_array()
+  assert_eq(once_ans.length(), 1)
+  assert_eq(once_ans[0].to_string(), "X = red")
+  // forall succeeds when the action holds for every solution
+  let ok = solve(p, [
+    compound("forall", [compound("color", [x]), compound("color", [x])]),
+  ]).to_array()
+  assert_eq(ok.length(), 1)
+  let bad = solve(p, [
+    compound("forall", [compound("color", [x]), eq(x, atom("red"))]),
+  ]).to_array()
+  assert_eq(bad.length(), 0)
+  // repeat with a cut: take the first repeat
+  let rep = solve(p, [compound("repeat", []), eq(x, atom("a")), atom("!")]).to_array()
+  assert_eq(rep.length(), 1)
+  assert_eq(rep[0].to_string(), "X = a")
+}
+
+///|
+test "if-then-else" {
+  let p = try! program([])
+  // (A -> B ; C): A holds -> B
+  let t1 = solve(p, [parse_term("(true -> X = 2 ; X = 3)")]).to_array()
+  assert_eq(t1.length(), 1)
+  assert_eq(t1[0].to_string(), "X = 2")
+  // A fails -> C
+  let t2 = solve(p, [parse_term("(fail -> X = 2 ; X = 3)")]).to_array()
+  assert_eq(t2.length(), 1)
+  assert_eq(t2[0].to_string(), "X = 3")
+  // soft cut: only the committed branch is kept
+  let p2 = try! program([
+    fact(compound("c", [int(1)])),
+    fact(compound("c", [int(2)])),
+  ])
+  let t3 = solve(p2, [parse_term("(c(Y) -> true ; true)")]).to_array()
+  assert_eq(t3.length(), 1)
+  assert_eq(t3[0].to_string(), "Y = 1")
+  // -> without else: X = 1 binds X, so the then-branch fails; use a
+  // condition that does not bind the answer variable
+  let t4 = solve(p, [parse_term("(true -> X = 5)")]).to_array()
+  assert_eq(t4.length(), 1)
+  assert_eq(t4[0].to_string(), "X = 5")
+  let t5 = solve(p, [parse_term("(X = 1 ; X = 2 -> true)")]).to_array()
+  assert_eq(t5.length(), 2)
+}
+
+///|
+test "term manipulation: functor, arg, univ, ground" {
+  let p = try! program([])
+  let f = variable("F")
+  let n = variable("N")
+  let a = variable("A")
+  let f1 = solve(p, [
+    compound("functor", [compound("f", [int(1), int(2)]), f, n]),
+  ]).to_array()
+  assert_eq(f1[0].to_string(), "F = f, N = 2")
+  let f2 = solve(p, [compound("functor", [f, atom("g"), int(3)])]).to_array()
+  assert_eq(f2[0].to_string(), "F = g(_, _, _)")
+  let a1 = solve(p, [
+    compound("arg", [int(2), compound("f", [int(1), int(2)]), a]),
+  ]).to_array()
+  assert_eq(a1[0].to_string(), "A = 2")
+  let a2 = solve(p, [compound("arg", [int(1), list([atom("x"), atom("y")]), a])]).to_array()
+  assert_eq(a2[0].to_string(), "A = x")
+  let u1 = solve(p, [parse_term("f(a, b) =.. L")]).to_array()
+  assert_eq(u1[0].to_string(), "L = [f, a, b]")
+  let u2 = solve(p, [parse_term("T =.. [g, 1, 2]")]).to_array()
+  assert_eq(u2[0].to_string(), "T = g(1, 2)")
+  let u3 = solve(p, [parse_term("x =.. L")]).to_array()
+  assert_eq(u3[0].to_string(), "L = [x]")
+  let g1 = solve(p, [compound("ground", [compound("f", [int(1)])])]).to_array()
+  assert_eq(g1.length(), 1)
+  let g2 = solve(p, [compound("ground", [compound("f", [variable("Y")])])]).to_array()
+  assert_eq(g2.length(), 0)
+}
+
+///|
+test "term ordering: compare, sort, msort, at" {
+  let p = try! program([])
+  let o = variable("O")
+  let c1 = solve(p, [compound("compare", [o, int(1), int(2)])]).to_array()
+  assert_eq(c1[0].to_string(), "O = <")
+  let c2 = solve(p, [compound("compare", [o, atom("b"), atom("a")])]).to_array()
+  assert_eq(c2[0].to_string(), "O = >")
+  let c3 = solve(p, [
+    compound("compare", [o, compound("f", [int(1)]), compound("f", [int(1)])]),
+  ]).to_array()
+  assert_eq(c3[0].to_string(), "O = =")
+  // standard order: numbers < atoms < compounds
+  let c4 = solve(p, [compound("compare", [o, int(1), atom("a")])]).to_array()
+  assert_eq(c4[0].to_string(), "O = <")
+  let s = variable("S")
+  let s1 = solve(p, [
+    compound("sort", [list([int(3), int(1), int(2), int(1)]), s]),
+  ]).to_array()
+  assert_eq(s1[0].to_string(), "S = [1, 2, 3]")
+  let s2 = solve(p, [
+    compound("msort", [list([int(3), int(1), int(2), int(1)]), s]),
+  ]).to_array()
+  assert_eq(s2[0].to_string(), "S = [1, 1, 2, 3]")
+  let lt = solve(p, [parse_term("1 @< 2")]).to_array()
+  assert_eq(lt.length(), 1)
+  let gt = solve(p, [parse_term("b @> a")]).to_array()
+  assert_eq(gt.length(), 1)
+}
+
+///|
+test "atom operations" {
+  let p = try! program([])
+  let n = variable("N")
+  let al = solve(p, [compound("atom_length", [atom("hello"), n])]).to_array()
+  assert_eq(al[0].to_string(), "N = 5")
+  let c = variable("C")
+  let ac = solve(p, [compound("atom_concat", [atom("foo"), atom("bar"), c])]).to_array()
+  assert_eq(ac[0].to_string(), "C = foobar")
+  let a = variable("A")
+  let b = variable("B")
+  let splits = solve(p, [compound("atom_concat", [a, b, atom("ab")])]).to_array()
+  assert_eq(splits.length(), 3)
+  assert_eq(splits[0].to_string(), "A = , B = ab")
+  assert_eq(splits[1].to_string(), "A = a, B = b")
+  assert_eq(splits[2].to_string(), "A = ab, B = ")
+}
+
+///|
+test "extended stdlib: nth, last, sums, select, flatten, permutation" {
+  let lib = stdlib()
+  let e = variable("E")
+  let n0 = variable("N")
+  let nth = lib
+    .solve([compound("nth0", [n0, list([atom("a"), atom("b"), atom("c")]), e])])
+    .to_array()
+  assert_eq(nth.length(), 3)
+  assert_eq(nth[0].to_string(), "N = 0, E = a")
+  assert_eq(nth[2].to_string(), "N = 2, E = c")
+  let last = lib
+    .solve([compound("last", [list([int(1), int(2), int(3)]), e])])
+    .to_array()
+  assert_eq(last[0].to_string(), "E = 3")
+  let s = variable("S")
+  let sum = lib
+    .solve([compound("sum_list", [list([int(1), int(2), int(3)]), s])])
+    .to_array()
+  assert_eq(sum[0].to_string(), "S = 6")
+  let m = variable("M")
+  let mx = lib
+    .solve([compound("max_list", [list([int(3), int(7), int(2)]), m])])
+    .to_array()
+  assert_eq(mx[0].to_string(), "M = 7")
+  let mn = lib
+    .solve([compound("min_list", [list([int(3), int(7), int(2)]), m])])
+    .to_array()
+  assert_eq(mn[0].to_string(), "M = 2")
+  let r = variable("R")
+  let sel = lib
+    .solve([compound("select", [int(2), list([int(1), int(2), int(3)]), r])])
+    .to_array()
+  assert_eq(sel[0].to_string(), "R = [1, 3]")
+  let f = variable("F")
+  let fl = lib
+    .solve([
+      compound("flatten", [
+        list([list([int(1), int(2)]), list([int(3), list([int(4)])])]),
+        f,
+      ]),
+    ])
+    .to_array()
+  assert_eq(fl[0].to_string(), "F = [1, 2, 3, 4]")
+  let perm = lib
+    .solve([compound("permutation", [list([int(1), int(2)]), r])])
+    .to_array()
+  assert_eq(perm.length(), 2)
+  assert_eq(perm[0].to_string(), "R = [1, 2]")
+  assert_eq(perm[1].to_string(), "R = [2, 1]")
+}
+
+///|
+test "parsing an entire program and querying it" {
+  let src =
+    #|%% a tiny family database
+    #|parent(john, mary). parent(john, jane). parent(mary, bob).
+    #|/* ancestor rules */
+    #|ancestor(X, Y) :- parent(X, Y).
+    #|ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+    #|
+  let p = try! parse_program(src)
+  let y = variable("Y")
+  let answers = p.solve([compound("ancestor", [atom("john"), y])]).to_array()
+  assert_eq(answers.length(), 3)
+  assert_eq(answers[0].to_string(), "Y = mary")
+  assert_eq(answers[1].to_string(), "Y = jane")
+  assert_eq(answers[2].to_string(), "Y = bob")
+  // parse errors raise
+  try parse_term("f(") catch {
+    ParseError::UnexpectedEof(pos=_p) => ()
+    _ => fail("expected UnexpectedEof")
+  } noraise {
+    _ => fail("expected parse error")
+  }
+  try parse_term("f(a") catch {
+    ParseError::UnexpectedEof(pos=_p) => ()
+    _ => fail("expected UnexpectedEof")
+  } noraise {
+    _ => fail("expected parse error")
+  }
+}

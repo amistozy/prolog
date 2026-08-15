@@ -10,6 +10,8 @@ pub fn and_(Term, Term) -> Term
 
 pub fn atom(String) -> Term
 
+pub fn compare_terms(Term, Term) -> Int
+
 pub fn compound(String, Array[Term]) -> Term
 
 pub fn cons(Term, Term) -> Term
@@ -44,6 +46,12 @@ pub fn not_identical(Term, Term) -> Term
 
 pub fn or_(Term, Term) -> Term
 
+pub fn parse_clause(String) -> Clause raise ParseError
+
+pub fn parse_program(String) -> Program raise ParseError
+
+pub fn parse_term(String) -> Term raise ParseError
+
 pub fn program(Array[Clause]) -> Program raise PrologError
 
 pub fn resolve(Term, Map[Int, Term]) -> Term
@@ -67,6 +75,12 @@ pub fn unify(Term, Term, Map[Int, Term]) -> Map[Int, Term]?
 pub fn variable(String) -> Term
 
 // Errors
+pub(all) suberror ParseError {
+  UnexpectedChar(pos~ : Int, ch~ : Char)
+  UnexpectedEof(pos~ : Int)
+  UnclosedString(pos~ : Int)
+} derive(@debug.Debug)
+
 pub(all) suberror PrologError {
   InvalidHead(term~ : Term)
 } derive(@debug.Debug)
@@ -92,6 +106,8 @@ type FStack derive(@debug.Debug)
 type Frame derive(@debug.Debug)
 
 type Machine derive(@debug.Debug)
+
+type Parser derive(@debug.Debug)
 
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
@@ -119,6 +135,10 @@ pub impl Mul for Term
 pub impl Neg for Term
 pub impl Show for Term
 pub impl Sub for Term
+
+type Tok derive(@debug.Debug)
+
+type TokItem derive(@debug.Debug)
 
 pub(all) struct VarRef {
   id : Int

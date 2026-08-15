@@ -297,8 +297,30 @@ fn render_compound(name : String, args : Array[Term]) -> String {
       name == "mod"
     ) {
     "(\{args[0]} \{name} \{args[1]})"
+  } else if args.length() == 2 &&
+    (
+      name == "=" ||
+      name == "\\=" ||
+      name == "==" ||
+      name == "\\==" ||
+      name == "=:=" ||
+      name == "=\\=" ||
+      name == "is" ||
+      name == "=.." ||
+      name == "<" ||
+      name == ">" ||
+      name == "=<" ||
+      name == ">=" ||
+      name == "@<" ||
+      name == "@>" ||
+      name == "@=<" ||
+      name == "@>="
+    ) {
+    "\{args[0]} \{name} \{args[1]}"
   } else if name == "-" && args.length() == 1 {
     "-\{args[0]}"
+  } else if name == "\\+" && args.length() == 1 {
+    "\\+ \{args[0]}"
   } else {
     "\{name}(\{args.map(fn (x) { "\{x}" }).join(", ")})"
   }

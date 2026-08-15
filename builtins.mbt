@@ -49,6 +49,8 @@ fn int_op(op : String, a : Int, b : Int) -> Term? {
     "//" => if b == 0 { None } else { Some(Int(a / b)) }
     "div" => if b == 0 { None } else { Some(Int(floor_div(a, b))) }
     "mod" => if b == 0 { None } else { Some(Int(a - b * floor_div(a, b))) }
+    "max" => Some(Int(if a > b { a } else { b }))
+    "min" => Some(Int(if a < b { a } else { b }))
     _ => None
   }
 }
@@ -60,6 +62,8 @@ fn float_op(op : String, a : Double, b : Double) -> Term? {
     "-" => Some(Float(a - b))
     "*" => Some(Float(a * b))
     "/" => if b == 0.0 { None } else { Some(Float(a / b)) }
+    "max" => Some(Float(if a > b { a } else { b }))
+    "min" => Some(Float(if a < b { a } else { b }))
     _ => None
   }
 }
@@ -203,6 +207,58 @@ fn Machine::run_builtin(
     | ("string", 1)
     | ("compound", 1)
     | ("list", 1) => Some(type_test(name, args[0], self.subst))
+    ("\\+", 1) => Some(self.not_(args[0]))
+    ("once", 1) => {
+      let m = self.choices.length()
+      self.push_goal(atom("!"), m)
+      self.push_goal(args[0], m)
+      Some(true)
+    }
+    ("repeat", 0) => {
+      self.choices.push({
+        goals: self.stack,
+        subst: self.subst,
+        alt: Goal(goal=atom("repeat"), mark~),
+      })
+      Some(true)
+    }
+    ("findall", 3) => Some(self.findall_(args[0], args[1], args[2]))
+    ("forall", 2) => Some(self.not_(and_(args[0], not_(args[1]))))
+    ("functor", 3) => Some(self.functor_(args[0], args[1], args[2]))
+    ("arg", 3) => Some(self.arg_(args[0], args[1], args[2]))
+    ("=..", 2) => Some(self.univ_(args[0], args[1]))
+    ("ground", 1) => Some(is_ground(resolve(args[0], self.subst)))
+    ("compare", 3) => {
+      let c = compare_terms(
+        resolve(args[1], self.subst),
+        resolve(args[2], self.subst),
+      )
+      let ord = if c < 0 { "<" } else if c > 0 { ">" } else { "=" }
+      Some(self.unify_goal(args[0], atom(ord)))
+    }
+    ("sort", 2) | ("msort", 2) => Some(self.sort_(name, args[0], args[1]))
+    ("@<", 2) | ("@>", 2) | ("@=<", 2) | ("@>=", 2) => {
+      let c = compare_terms(
+        resolve(args[0], self.subst),
+        resolve(args[1], self.subst),
+      )
+      Some(
+        match name {
+          "@<" => c < 0
+          "@>" => c > 0
+          "@=<" => c <= 0
+          _ => c >= 0
+        },
+      )
+    }
+    ("atom_length", 2) =>
+      match deref(args[0], self.subst) {
+        Atom(s) => Some(self.unify_goal(args[1], int(s.length())))
+        Str(s) => Some(self.unify_goal(args[1], int(s.length())))
+        _ => Some(false)
+      }
+    ("atom_concat", 3) =>
+      Some(self.atom_concat_(args[0], args[1], args[2], mark))
     _ => None
   }
 }

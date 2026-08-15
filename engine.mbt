@@ -154,11 +154,38 @@ fn Machine::execute(self : Machine, fr : Frame) -> Bool {
         self.push_goal(args[0], fr.mark)
         true
       } else if name == ";" && args.length() == 2 {
-        self.choices.push({
-          goals: self.stack,
-          subst: self.subst,
-          alt: Goal(goal=args[1], mark=fr.mark),
-        })
+        match args[0] {
+          // (A -> B ; C): soft cut — commit to B once A succeeds.
+          Compound("->", [cond, then]) => {
+            let m0 = self.choices.length()
+            self.choices.push({
+              goals: self.stack,
+              subst: self.subst,
+              alt: Goal(goal=args[1], mark=fr.mark),
+            })
+            // Execute order (LIFO): cond, then `!`, then the committed
+            // branch.
+            self.push_goal(then, fr.mark)
+            self.push_goal(atom("!"), m0)
+            self.push_goal(cond, fr.mark)
+            true
+          }
+          _ => {
+            self.choices.push({
+              goals: self.stack,
+              subst: self.subst,
+              alt: Goal(goal=args[1], mark=fr.mark),
+            })
+            self.push_goal(args[0], fr.mark)
+            true
+          }
+        }
+      } else if name == "->" && args.length() == 2 {
+        // (A -> B) without an else branch: commit to B once A succeeds,
+        // and fail entirely when A fails.
+        let m0 = self.choices.length()
+        self.push_goal(args[1], fr.mark)
+        self.push_goal(atom("!"), m0)
         self.push_goal(args[0], fr.mark)
         true
       } else {

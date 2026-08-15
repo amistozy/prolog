@@ -131,16 +131,54 @@ test {
 }
 ```
 
+## Writing programs in Prolog syntax
+
+Instead of (or alongside) the builder API, the package can parse plain Prolog
+source text:
+
+```mbt check
+///|
+test {
+  let src =
+    #|parent(john, mary). parent(john, jane). parent(mary, bob).
+    #|ancestor(X, Y) :- parent(X, Y).
+    #|ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+    #|
+  let p = parse_program(src)
+  let y = variable("Y")
+  let answers = p.solve([compound("ancestor", [atom("john"), y])]).to_array()
+  assert_eq(answers.length(), 3)
+  assert_eq(answers[2].to_string(), "Y = bob")
+}
+```
+
+- `parse_term("parent(john, X)")` — one term (variables with the same name
+  share one variable, like in Prolog)
+- `parse_clause("ancestor(X, Y) :- parent(X, Y).")` — one clause
+- `parse_program(src)` — a whole program (`.`-separated clauses, `%` and
+  `/* */` comments)
+
+Supported syntax: variables, atoms (incl. quoted `'...'`), integers, floats
+(including `1.5e-2`), strings, lists with tails (`[a, b | T]`), compound
+terms, and the usual ISO operators with their precedences (`:-`, `;`, `,`,
+`->`, `=`, `is`, `=..`, `+ - * / // div mod`, `@< ...`, unary `-` and `\+`).
+
 ## Builtins and standard library
 
 Builtin predicates (they take precedence over clauses with the same name):
 
-- control: `true`, `fail`, `!` (cut), `,`/`;` are handled structurally
+- control: `true`, `fail`, `!` (cut), `,`/`;`/`->` (if-then-else) are
+  handled structurally; `(A -> B ; C)` commits to `B` once `A` succeeds
 - unification: `=`, `\=`, `==`, `\==`
 - arithmetic: `is`, `<`, `>`, `=<`/`<=`, `>=`, `=:=`, `=\=`;
-  functors `+ - * / // div mod abs` (with ISO semantics: `/` is float
-  division, `//` truncates, `div`/`mod` floor)
-- meta: `not(G)` (with a cut-local scope), `call(G)`
+  functors `+ - * / // div mod abs max min` (with ISO semantics: `/` is
+  float division, `//` truncates, `div`/`mod` floor)
+- meta: `not/1` and `\+` (with a cut-local scope), `call/1`, `once/1`,
+  `repeat/0`, `forall/2`, `findall/3`
+- term inspection: `functor/3`, `arg/3`, `=../2`, `ground/1`
+- term ordering (standard order, cf. Scryer's `TermOrderCategory`):
+  `compare/3`, `sort/2`, `msort/2`, `@<`, `@>`, `@=<`, `@>=`
+- atoms: `atom_length/2`, `atom_concat/3` (enumerates splits)
 - type tests: `var`, `nonvar`, `atom`, `integer`, `float`, `number`,
   `atomic`, `string`, `compound`, `list`
 - output: `write(X)`, `writeln(X)` (simplified to `println`)
@@ -161,8 +199,10 @@ test {
 }
 ```
 
-`member/2`, `append/3`, `length/2`, `reverse/2`, `between/3` are available
-in any argument direction, e.g. `append(A, B, [1, 2])` enumerates all splits.
+`member/2`, `append/3`, `length/2`, `reverse/2`, `between/3`,
+`nth0/3`, `nth1/3`, `last/2`, `sum_list/2`, `max_list/2`, `min_list/2`,
+`select/3`, `flatten/2`, `permutation/2` are available in any argument
+direction, e.g. `append(A, B, [1, 2])` enumerates all splits.
 
 ## Laziness
 

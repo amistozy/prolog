@@ -4,6 +4,8 @@
 /// argument direction):
 ///
 /// - `member/2`, `append/3`, `length/2`, `reverse/2`, `between/3`
+/// - `nth0/3`, `nth1/3`, `last/2`, `sum_list/2`, `max_list/2`, `min_list/2`
+/// - `select/3`, `flatten/2`, `permutation/2`
 ///
 /// ```mbt check
 /// test {
@@ -32,6 +34,30 @@ pub fn stdlib() -> Program {
     clauses.push(c)
   }
   for c in between_clauses() {
+    clauses.push(c)
+  }
+  for c in nth_clauses() {
+    clauses.push(c)
+  }
+  for c in last_clauses() {
+    clauses.push(c)
+  }
+  for c in sum_list_clauses() {
+    clauses.push(c)
+  }
+  for c in max_list_clauses() {
+    clauses.push(c)
+  }
+  for c in min_list_clauses() {
+    clauses.push(c)
+  }
+  for c in select_clauses() {
+    clauses.push(c)
+  }
+  for c in flatten_clauses() {
+    clauses.push(c)
+  }
+  for c in permutation_clauses() {
     clauses.push(c)
   }
   try! program(clauses)
@@ -122,6 +148,164 @@ fn between_clauses() -> Array[Clause] {
         and_(Compound("<", [l, u]), is_(l1, Compound("+", [l, Int(1)]))),
         compound("between", [l1, u, x]),
       ),
+    ),
+  ]
+}
+
+///|
+/// `nth0(0, [X | _], X).` and
+/// `nth0(N, [_ | T], X) :- nth0(M, T, X), N is M + 1.`
+/// (`nth1/3` is 1-based.)
+fn nth_clauses() -> Array[Clause] {
+  let i = variable("I")
+  let t = variable("T")
+  let i2 = variable("I")
+  let m = variable("M")
+  let t2 = variable("T")
+  let x2 = variable("X")
+  let i3 = variable("I")
+  let i4 = variable("I")
+  let m2 = variable("M")
+  let t4 = variable("T")
+  let x4 = variable("X")
+  [
+    fact(compound("nth0", [int(0), cons(i, t), i])),
+    rule(
+      compound("nth0", [i2, cons(variable("_"), t2), x2]),
+      and_(compound("nth0", [m, t2, x2]), is_(i2, Compound("+", [m, Int(1)]))),
+    ),
+    fact(compound("nth1", [int(1), cons(i3, t), i3])),
+    rule(
+      compound("nth1", [i4, cons(variable("_"), t4), x4]),
+      and_(compound("nth1", [m2, t4, x4]), is_(i4, Compound("+", [m2, Int(1)]))),
+    ),
+  ]
+}
+
+///|
+/// `last([X], X).` and `last([_ | T], X) :- last(T, X).`
+fn last_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let x2 = variable("X")
+  [
+    fact(compound("last", [cons(x, empty_list()), x])),
+    rule(
+      compound("last", [cons(variable("_"), t), x2]),
+      compound("last", [t, x2]),
+    ),
+  ]
+}
+
+///|
+/// `sum_list([], 0).` and `sum_list([X | T], S) :- sum_list(T, S1), S is S1 + X.`
+fn sum_list_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let s = variable("S")
+  let s1 = variable("S1")
+  [
+    fact(compound("sum_list", [empty_list(), int(0)])),
+    rule(
+      compound("sum_list", [cons(x, t), s]),
+      and_(compound("sum_list", [t, s1]), is_(s, Compound("+", [s1, x]))),
+    ),
+  ]
+}
+
+///|
+/// `max_list([X], X).` and
+/// `max_list([X | T], M) :- max_list(T, M1), M is max(X, M1).`
+fn max_list_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let m = variable("M")
+  let m1 = variable("M1")
+  [
+    fact(compound("max_list", [cons(x, empty_list()), x])),
+    rule(
+      compound("max_list", [cons(x, t), m]),
+      and_(compound("max_list", [t, m1]), is_(m, Compound("max", [x, m1]))),
+    ),
+  ]
+}
+
+///|
+/// `min_list([X], X).` and
+/// `min_list([X | T], M) :- min_list(T, M1), M is min(X, M1).`
+fn min_list_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let m = variable("M")
+  let m1 = variable("M1")
+  [
+    fact(compound("min_list", [cons(x, empty_list()), x])),
+    rule(
+      compound("min_list", [cons(x, t), m]),
+      and_(compound("min_list", [t, m1]), is_(m, Compound("min", [x, m1]))),
+    ),
+  ]
+}
+
+///|
+/// `select(X, [X | T], T).` and
+/// `select(X, [H | T], [H | R]) :- select(X, T, R).`
+fn select_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let h = variable("H")
+  let x2 = variable("X")
+  let t2 = variable("T")
+  let r = variable("R")
+  [
+    fact(compound("select", [x, cons(x, t), t])),
+    rule(
+      compound("select", [x2, cons(h, t2), cons(h, r)]),
+      compound("select", [x2, t2, r]),
+    ),
+  ]
+}
+
+///|
+/// `flatten([], []).` and `flatten([H | T], F) :-
+/// flatten(H, F1), flatten(T, F2), append(F1, F2, F).`
+/// plus `flatten(X, [X]) :- atomic(X).`
+fn flatten_clauses() -> Array[Clause] {
+  let h = variable("H")
+  let t = variable("T")
+  let f = variable("F")
+  let f1 = variable("F1")
+  let f2 = variable("F2")
+  let x = variable("X")
+  [
+    fact(compound("flatten", [empty_list(), empty_list()])),
+    rule(
+      compound("flatten", [cons(h, t), f]),
+      and_(
+        and_(compound("flatten", [h, f1]), compound("flatten", [t, f2])),
+        compound("append", [f1, f2, f]),
+      ),
+    ),
+    rule(
+      compound("flatten", [x, cons(x, empty_list())]),
+      compound("atomic", [x]),
+    ),
+  ]
+}
+
+///|
+/// `permutation([], []).` and
+/// `permutation(L, [H | T]) :- select(H, L, R), permutation(R, T).`
+fn permutation_clauses() -> Array[Clause] {
+  let h = variable("H")
+  let l = variable("L")
+  let t = variable("T")
+  let r = variable("R")
+  [
+    fact(compound("permutation", [empty_list(), empty_list()])),
+    rule(
+      compound("permutation", [l, cons(h, t)]),
+      and_(compound("select", [h, l, r]), compound("permutation", [r, t])),
     ),
   ]
 }
