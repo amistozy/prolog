@@ -40,10 +40,7 @@
 ///       // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ///       rule(
 ///         compound("ancestor", [ax, ay]),
-///         and_(
-///           compound("parent", [ax, az]),
-///           compound("ancestor", [az, ay]),
-///         ),
+///         compound("parent", [ax, az]).and_(compound("ancestor", [az, ay])),
 ///       ),
 ///     ],
 ///   )

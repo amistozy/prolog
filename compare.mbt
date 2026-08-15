@@ -9,7 +9,22 @@
 ///|
 /// Compares two resolved terms, returning a negative / zero / positive int
 /// (like `compare/3`). Unbound variables compare by their id.
-pub fn compare_terms(a : Term, b : Term) -> Int {
+///
+/// ```mbt check
+/// test {
+///   assert_true(atom("a").compare_terms(int(1)) > 0)
+///   assert_eq(int(1).compare_terms(int(1)), 0)
+///   // standard order: floats sort before integers, so Int(1) > Float(1.0)
+///   assert_true(int(1).compare_terms(float(1.0)) > 0)
+/// }
+/// ```
+pub fn Term::compare_terms(self : Term, other : Term) -> Int {
+  compare_terms(self, other)
+}
+
+///|
+/// Internal comparison (no receiver), used throughout the engine.
+fn compare_terms(a : Term, b : Term) -> Int {
   match (a, b) {
     (Var(x), Var(y)) =>
       if x.id == y.id {

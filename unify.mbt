@@ -7,7 +7,7 @@
 pub type Subst = Map[Int, Term]
 
 ///|
-/// Follows the binding chain of `t`, returning the current value of the
+/// Follows the binding chain of `self`, returning the current value of the
 /// variable (or the term itself if it is not a bound variable).
 ///
 /// ```mbt check
@@ -15,19 +15,19 @@ pub type Subst = Map[Int, Term]
 ///   let x = variable("X")
 ///   let y = variable("Y")
 ///   let s : Subst = Map([])
-///   let s2 = match unify(x, y, s) {
+///   let s2 = match x.unify(y, s) {
 ///     Some(s2) => s2
 ///     None => abort("unify failed")
 ///   }
-///   let s3 = match unify(y, atom("a"), s2) {
+///   let s3 = match y.unify(atom("a"), s2) {
 ///     Some(s3) => s3
 ///     None => abort("unify failed")
 ///   }
-///   assert_eq(deref(x, s3).to_string(), "a")
+///   assert_eq(x.deref(s3).to_string(), "a")
 /// }
 /// ```
-pub fn deref(t : Term, s : Subst) -> Term {
-  let mut cur = t
+pub fn Term::deref(self : Term, s : Subst) -> Term {
+  let mut cur = self
   for ;; {
     match cur {
       Var(v) =>
@@ -41,15 +41,27 @@ pub fn deref(t : Term, s : Subst) -> Term {
 }
 
 ///|
+/// Internal dereferencing (no receiver), used throughout the engine.
+fn deref(t : Term, s : Subst) -> Term {
+  t.deref(s)
+}
+
+///|
 /// Fully resolves a term: bound variables are replaced by their values
 /// recursively, unbound variables stay as they are.
-pub fn resolve(t : Term, s : Subst) -> Term {
-  match deref(t, s) {
+pub fn Term::resolve(self : Term, s : Subst) -> Term {
+  match deref(self, s) {
     Var(v) => Var(v)
     List(xs) => List(xs.map(fn(x) { resolve(x, s) }))
     Compound(f, args) => Compound(f, args.map(fn(x) { resolve(x, s) }))
     other => other
   }
+}
+
+///|
+/// Internal resolving (no receiver), used throughout the engine.
+fn resolve(t : Term, s : Subst) -> Term {
+  t.resolve(s)
 }
 
 ///|
@@ -60,7 +72,21 @@ pub fn resolve(t : Term, s : Subst) -> Term {
 /// Numbers unify numerically: `Int(1)` and `Float(1.0)` unify.
 /// Proper lists (built from `List`, `[]` or cons cells) unify regardless of
 /// which representation each side uses.
-pub fn unify(a : Term, b : Term, s : Subst) -> Subst? {
+///
+/// ```mbt check
+/// test {
+///   let x = variable("X")
+///   let s = x.unify(atom("a"), Map([]))
+///   assert_true(s is Some(_))
+/// }
+/// ```
+pub fn Term::unify(self : Term, other : Term, s : Subst) -> Subst? {
+  unify(self, other, s)
+}
+
+///|
+/// Internal unification (no receiver), used throughout the engine.
+fn unify(a : Term, b : Term, s : Subst) -> Subst? {
   let a = deref(a, s)
   let b = deref(b, s)
   match (a, b) {

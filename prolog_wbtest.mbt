@@ -6,14 +6,14 @@ test "unify: variables, occurs check, chains" {
   // var-var binds one to the other
   let x = variable("X")
   let y = variable("Y")
-  let s = match unify(x, y, Map([])) {
+  let s = match x.unify(y, Map([])) {
     Some(s) => s
     None => abort("x = y should unify")
   }
-  assert_true(deref(x, s) is Var(_))
+  assert_true(x.deref(s) is Var(_))
   // occurs check rejects f(X) = X
   let z = variable("Z")
-  let cyclic = unify(compound("f", [z]), z, Map([]))
+  let cyclic = compound("f", [z]).unify(z, Map([]))
   assert_true(cyclic is None)
   // proper list unifies with a cons chain
   let t = variable("T")
@@ -22,22 +22,21 @@ test "unify: variables, occurs check, chains" {
     Some(s2) => s2
     None => abort("list vs chain should unify")
   }
-  assert_eq(deref(t, s2).to_string(), "[]")
+  assert_eq(t.deref(s2).to_string(), "[]")
   // mismatched lengths fail
-  let s3 = unify(list([int(1), int(2)]), list([int(1)]), Map([]))
+  let s3 = list([int(1), int(2)]).unify(list([int(1)]), Map([]))
   assert_true(s3 is None)
   // numeric equality: 1 = 1.0
-  let s4 = unify(int(1), float(1.0), Map([]))
+  let s4 = int(1).unify(float(1.0), Map([]))
   assert_true(s4 is Some(_))
   // deep structure
-  let s5 = unify(
-    compound("f", [compound("g", [x]), int(2)]),
+  let s5 = compound("f", [compound("g", [x]), int(2)]).unify(
     compound("f", [compound("g", [atom("a")]), int(2)]),
     Map([]),
   )
   assert_eq(
     match s5 {
-      Some(s) => deref(x, s).to_string()
+      Some(s) => x.deref(s).to_string()
       None => abort("should unify")
     },
     "a",
@@ -129,12 +128,12 @@ test "machine: fresh variables per clause invocation" {
   // same clause invoked twice in one query must not share variables
   let t = variable("T")
   let p = try! program([
-    rule(compound("twice", [t]), and_(compound("t", [t]), compound("t", [t]))),
+    rule(compound("twice", [t]), compound("t", [t]).and_(compound("t", [t]))),
     fact(compound("t", [int(1)])),
     fact(compound("t", [int(2)])),
   ])
   let x = variable("X")
-  let answers = solve(p, [compound("twice", [x])]).to_array()
+  let answers = p.solve([compound("twice", [x])]).to_array()
   assert_eq(answers.length(), 2)
   assert_eq(answers[0].to_string(), "X = 1")
   assert_eq(answers[1].to_string(), "X = 2")
@@ -148,13 +147,14 @@ test "machine: cut inside not stays local" {
   ])
   let x = variable("X")
   // not((true, !)) fails since (true, !) succeeds -> no answers
-  let answers = solve(p, [
-    compound("p", [x]),
-    not_(and_(atom("true"), atom("!"))),
-  ]).to_array()
+  let answers = p
+    .solve([compound("p", [x]), atom("true").and_(atom("!")).not_()])
+    .to_array()
   assert_eq(answers.length(), 0)
   // not(p(99)) succeeds, and both p solutions survive
-  let answers2 = solve(p, [compound("p", [x]), not_(compound("p", [int(99)]))]).to_array()
+  let answers2 = p
+    .solve([compound("p", [x]), compound("p", [int(99)]).not_()])
+    .to_array()
   assert_eq(answers2.length(), 2)
   assert_eq(answers2[1].to_string(), "X = 2")
 }
@@ -168,7 +168,7 @@ test "machine: deep recursion does not overflow" {
   }
   let p = try! program(clauses)
   let x = variable("X")
-  let answers = solve(p, [compound("next", [int(0), x])]).to_array()
+  let answers = p.solve([compound("next", [int(0), x])]).to_array()
   assert_eq(answers.length(), 1)
   assert_eq(answers[0].to_string(), "X = 1")
 }

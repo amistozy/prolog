@@ -29,7 +29,7 @@ test {
   assert_eq(answers[2].to_string(), "X = mary")
 
   // 3. or enumerate lazily
-  let first = solve_first(p, [compound("parent", [x, variable("_")])])
+  let first = p.solve_first([compound("parent", [x, variable("_")])])
   assert_eq(first.unwrap().to_string(), "X = john")
 }
 ```
@@ -92,7 +92,7 @@ test {
     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
     rule(
       compound("ancestor", [x, y]),
-      and_(compound("parent", [x, z]), compound("ancestor", [z, y])),
+      compound("parent", [x, z]).and_(compound("ancestor", [z, y])),
     ),
   ])
   let y2 = variable("Y")
@@ -108,9 +108,10 @@ Lists can be built either as `list([...])` or as cons chains (`h | t`,
 
 ## Querying
 
-- `solve(program, goals)` / `Program::solve` — a lazy iterator of [`Answer`]s
-- `solve_first(program, goals)` — the first answer, if any
-- `solve_all(program, goals)` — all answers (careful with infinite programs)
+- `program.solve(goals)` / [`Program::solve`] — a lazy iterator of
+  [`Answer`]s
+- `program.solve_first(goals)` — the first answer, if any
+- `program.solve_all(goals)` — all answers (careful with infinite programs)
 
 An [`Answer`] reports the bindings of the query's named variables, rendered
 as `X = john, Y = mary`.

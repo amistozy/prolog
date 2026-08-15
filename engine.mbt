@@ -282,8 +282,8 @@ fn Machine::not_(self : Machine, g : Term) -> Bool {
 ///|
 /// All solutions of the query (a conjunction of goals) as a lazy iterator of
 /// raw substitutions.
-pub fn solve_subst(prog : Program, goals : Array[Term]) -> Iter[Subst] {
-  let m = Machine::new(prog)
+pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] {
+  let m = Machine::new(self)
   // Push in reverse: the goal stack pops the last pushed frame first, so
   // goals are executed in their given order.
   for i = goals.length() - 1; i >= 0; i = i - 1 {
@@ -373,9 +373,9 @@ pub impl Show for Answer with fn to_string(self) {
 }
 
 ///|
-/// Runs a query against a program, yielding each solution as an [`Answer`].
-/// The iterator is lazy: solutions are produced on demand, and infinite
-/// solution spaces can be explored with `take`/`next`.
+/// Runs a query against the program, yielding each solution as an
+/// [`Answer`]. The iterator is lazy: solutions are produced on demand, and
+/// infinite solution spaces can be explored with `take`/`next`.
 ///
 /// ```mbt check
 /// test {
@@ -384,30 +384,24 @@ pub impl Show for Answer with fn to_string(self) {
 ///     fact(compound("parent", [atom("john"), atom("jane")])),
 ///   ])
 ///   let x = variable("X")
-///   let answers = solve(p, [compound("parent", [x, variable("_")])]).to_array()
+///   let answers = p.solve([compound("parent", [x, variable("_")])]).to_array()
 ///   assert_eq(answers.length(), 2)
 ///   assert_eq(answers[0].to_string(), "X = john")
 /// }
 /// ```
-pub fn solve(prog : Program, goals : Array[Term]) -> Iter[Answer] {
-  solve_subst(prog, goals).map(fn(s) { Answer::from_subst(s, goals) })
+pub fn Program::solve(self : Program, goals : Array[Term]) -> Iter[Answer] {
+  self.solve_subst(goals).map(fn(s) { Answer::from_subst(s, goals) })
 }
 
 ///|
 /// The first solution of a query, if any.
-pub fn solve_first(prog : Program, goals : Array[Term]) -> Answer? {
-  solve(prog, goals).next()
+pub fn Program::solve_first(self : Program, goals : Array[Term]) -> Answer? {
+  self.solve(goals).next()
 }
 
 ///|
 /// All solutions of a query. Use with care on programs with infinite
 /// solution spaces (use [`solve`] with `take`/`next` instead).
-pub fn solve_all(prog : Program, goals : Array[Term]) -> Array[Answer] {
-  solve(prog, goals).to_array()
-}
-
-///|
-/// Convenience method: `prog.solve(goals)`.
-pub fn Program::solve(self : Program, goals : Array[Term]) -> Iter[Answer] {
-  solve(self, goals)
+pub fn Program::solve_all(self : Program, goals : Array[Term]) -> Array[Answer] {
+  self.solve(goals).to_array()
 }

@@ -68,7 +68,7 @@ pub fn program(clauses : Array[Clause]) -> Program raise PrologError {
 /// Adds a clause to the program. Raises [`PrologError::InvalidHead`] when
 /// the head is not an atom or a compound term.
 pub fn Program::add(self : Program, c : Clause) -> Unit raise PrologError {
-  match head_key(c.head) {
+  match c.head.head_key() {
     Some(key) =>
       match self.clauses.get(key) {
         Some(existing) => existing.push(c)
@@ -80,8 +80,16 @@ pub fn Program::add(self : Program, c : Clause) -> Unit raise PrologError {
 
 ///|
 /// The predicate key of a callable term: `(name, arity)`.
-pub fn head_key(t : Term) -> (String, Int)? {
-  match t {
+///
+/// ```mbt check
+/// test {
+///   assert_eq(compound("parent", [atom("john")]).head_key(), Some(("parent", 1)))
+///   assert_eq(atom("true").head_key(), Some(("true", 0)))
+///   assert_true(int(1).head_key() is None)
+/// }
+/// ```
+pub fn Term::head_key(self : Term) -> (String, Int)? {
+  match self {
     Atom(name) => Some((name, 0))
     Compound(name, args) => Some((name, args.length()))
     _ => None
@@ -90,48 +98,70 @@ pub fn head_key(t : Term) -> (String, Int)? {
 
 ///|
 /// Builds the conjunction `(a, b)`; also available as `a & b`.
-pub fn and_(a : Term, b : Term) -> Term {
-  Compound(",", [a, b])
+pub fn Term::and_(self : Term, b : Term) -> Term {
+  Compound(",", [self, b])
 }
 
 ///|
 /// Builds the disjunction `(a ; b)`.
-pub fn or_(a : Term, b : Term) -> Term {
-  Compound(";", [a, b])
+pub fn Term::or_(self : Term, b : Term) -> Term {
+  Compound(";", [self, b])
 }
 
 ///|
-/// Builds the goal `a = b` (unification).
-pub fn eq(a : Term, b : Term) -> Term {
-  Compound("=", [a, b])
+/// Builds the goal `self = other` (unification).
+pub fn Term::eq(self : Term, other : Term) -> Term {
+  Compound("=", [self, other])
 }
 
 ///|
-/// Builds the goal `a \= b` (non-unifiability).
-pub fn neq(a : Term, b : Term) -> Term {
-  Compound("\\=", [a, b])
+/// Builds the goal `self \= other` (non-unifiability).
+pub fn Term::neq(self : Term, other : Term) -> Term {
+  Compound("\\=", [self, other])
 }
 
 ///|
-/// Builds the goal `a == b` (identical terms).
-pub fn identical(a : Term, b : Term) -> Term {
-  Compound("==", [a, b])
+/// Builds the goal `self == other` (identical terms).
+pub fn Term::identical(self : Term, other : Term) -> Term {
+  Compound("==", [self, other])
 }
 
 ///|
-/// Builds the goal `a \== b`.
-pub fn not_identical(a : Term, b : Term) -> Term {
-  Compound("\\==", [a, b])
+/// Builds the goal `self \== other`.
+pub fn Term::not_identical(self : Term, other : Term) -> Term {
+  Compound("\\==", [self, other])
 }
 
 ///|
-/// Builds the goal `x is expr` (arithmetic evaluation).
-pub fn is_(x : Term, expr : Term) -> Term {
-  Compound("is", [x, expr])
+/// Builds the goal `self is expr` (arithmetic evaluation).
+pub fn Term::is_(self : Term, expr : Term) -> Term {
+  Compound("is", [self, expr])
 }
 
 ///|
-/// Builds the goal `not(g)`.
-pub fn not_(g : Term) -> Term {
-  Compound("not", [g])
+/// Builds the goal `not(self)`.
+pub fn Term::not_(self : Term) -> Term {
+  Compound("not", [self])
+}
+
+///|
+/// Internal goal-construction helpers (no receiver), used by the engine and
+/// the bundled clauses. The public API is the `Term` methods above.
+fn and_(a : Term, b : Term) -> Term {
+  a.and_(b)
+}
+
+///|
+fn eq(a : Term, b : Term) -> Term {
+  a.eq(b)
+}
+
+///|
+fn is_(x : Term, expr : Term) -> Term {
+  x.is_(expr)
+}
+
+///|
+fn not_(g : Term) -> Term {
+  g.not_()
 }
