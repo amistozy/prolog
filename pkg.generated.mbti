@@ -1,0 +1,134 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "amistozy/prolog"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn and_(Term, Term) -> Term
+
+pub fn atom(String) -> Term
+
+pub fn compound(String, Array[Term]) -> Term
+
+pub fn cons(Term, Term) -> Term
+
+pub fn deref(Term, Map[Int, Term]) -> Term
+
+pub fn empty_list() -> Term
+
+pub fn eq(Term, Term) -> Term
+
+pub fn fact(Term) -> Clause
+
+pub fn float(Double) -> Term
+
+pub fn head_key(Term) -> (String, Int)?
+
+pub fn identical(Term, Term) -> Term
+
+pub fn int(Int) -> Term
+
+pub fn is_(Term, Term) -> Term
+
+pub fn list(Array[Term]) -> Term
+
+pub fn list_tail(Array[Term], Term) -> Term
+
+pub fn neq(Term, Term) -> Term
+
+pub fn not_(Term) -> Term
+
+pub fn not_identical(Term, Term) -> Term
+
+pub fn or_(Term, Term) -> Term
+
+pub fn program(Array[Clause]) -> Program raise PrologError
+
+pub fn resolve(Term, Map[Int, Term]) -> Term
+
+pub fn rule(Term, Term) -> Clause
+
+pub fn solve(Program, Array[Term]) -> Iter[Answer]
+
+pub fn solve_all(Program, Array[Term]) -> Array[Answer]
+
+pub fn solve_first(Program, Array[Term]) -> Answer?
+
+pub fn solve_subst(Program, Array[Term]) -> Iter[Map[Int, Term]]
+
+pub fn stdlib() -> Program
+
+pub fn str(String) -> Term
+
+pub fn unify(Term, Term, Map[Int, Term]) -> Map[Int, Term]?
+
+pub fn variable(String) -> Term
+
+// Errors
+pub(all) suberror PrologError {
+  InvalidHead(term~ : Term)
+} derive(@debug.Debug)
+
+// Types and methods
+type Alt derive(@debug.Debug)
+
+pub struct Answer {
+  bindings : Map[String, Term]
+} derive(@debug.Debug)
+pub fn Answer::from_subst(Map[Int, Term], Array[Term]) -> Self
+pub impl Show for Answer
+
+type Choice derive(@debug.Debug)
+
+pub struct Clause {
+  head : Term
+  body : Term
+} derive(@debug.Debug)
+
+type FStack derive(@debug.Debug)
+
+type Frame derive(@debug.Debug)
+
+type Machine derive(@debug.Debug)
+
+pub struct Program {
+  clauses : Map[(String, Int), Array[Clause]]
+} derive(@debug.Debug)
+pub fn Program::add(Self, Clause) -> Unit raise PrologError
+pub fn Program::solve(Self, Array[Term]) -> Iter[Answer]
+
+pub(all) enum Term {
+  Int(Int)
+  Float(Double)
+  Atom(String)
+  Str(String)
+  Var(VarRef)
+  List(Array[Term])
+  Compound(String, Array[Term])
+} derive(@debug.Debug)
+pub impl FromLiteral for Term
+pub impl Add for Term
+pub impl BitAnd for Term
+pub impl BitOr for Term
+pub impl Div for Term
+pub impl Eq for Term
+pub impl Mod for Term
+pub impl Mul for Term
+pub impl Neg for Term
+pub impl Show for Term
+pub impl Sub for Term
+
+pub(all) struct VarRef {
+  id : Int
+  name : String
+} derive(@debug.Debug)
+
+// Type aliases
+pub type Subst = Map[Int, Term]
+
+// Traits
+pub trait FromLiteral {
+  fn from_literal(Int) -> Self
+}
