@@ -63,8 +63,6 @@ pub struct Clause {
 pub fn Clause::Clause(Term, Term) -> Self
 pub fn Clause::fact(Term) -> Self
 
-type Parser derive(@debug.Debug)
-
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
 } derive(@debug.Debug)
@@ -76,7 +74,7 @@ pub fn Program::solve_first(Self, Array[Term]) -> Answer?
 pub fn Program::solve_subst(Self, Array[Term]) -> Iter[@hashmap.HashMap[Int, Term]]
 pub fn Program::stdlib() -> Self
 
-pub(all) enum Term {
+pub enum Term {
   Int(Int)
   Float(Double)
   Atom(String)
@@ -109,10 +107,6 @@ pub impl Mul for Term
 pub impl Neg for Term
 pub impl Show for Term
 pub impl Sub for Term
-
-type Tok derive(@debug.Debug)
-
-type TokItem derive(@debug.Debug)
 
 pub(all) struct VarRef {
   id : Int

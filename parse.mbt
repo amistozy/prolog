@@ -113,13 +113,13 @@ pub(all) suberror ParseError {
 } derive(Debug)
 
 ///|
-struct TokItem {
+priv struct TokItem {
   tok : Tok
   pos : Int
-} derive(Debug)
+}
 
 ///|
-enum Tok {
+priv enum Tok {
   TkVar(String)
   TkAtom(String)
   TkInt(Int)
@@ -135,16 +135,16 @@ enum Tok {
   TkPipe
   TkPeriod
   TkEof
-} derive(Debug)
+}
 
 ///|
-struct Parser {
+priv struct Parser {
   toks : Array[TokItem]
   mut pos : Int
   /// Named variables of the term/clause being parsed: the same name must
   /// denote the same logic variable (like in Prolog source text).
   mut vars : Map[String, Term]
-} derive(Debug)
+}
 
 ///|
 /// Builds a fresh parser over the given token stream, positioned at the

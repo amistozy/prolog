@@ -5,7 +5,7 @@
 priv struct Frame {
   goal : Term
   mark : Int
-} derive(Debug)
+}
 
 ///|
 /// Immutable goal stack. Pushing creates a new cell, so frames pushed before
@@ -13,7 +13,7 @@ priv struct Frame {
 priv enum FStack {
   FNil
   FCons(Frame, FStack)
-} derive(Debug)
+}
 
 ///|
 /// How to resume from a choice point during backtracking.
