@@ -15,12 +15,18 @@ version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://github.com/amistozy/prolog"
 
 license = "Apache-2.0"
 
-keywords = [ ]
+keywords = [
+  "prolog",
+  "edsl",
+  "logic-programming",
+  "logic",
+  "moonbit",
+]
 
 preferred_target = "wasm"
 
-description = ""
+description = "A Prolog EDSL in MoonBit: build terms, clauses and programs as ordinary MoonBit values and run SLD resolution with backtracking. Includes a Prolog syntax parser, DCG rules, dif/2 constraints and a relational standard library, modeled after Scryer Prolog."
