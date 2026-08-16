@@ -70,7 +70,7 @@ pub fn Term::dcg_body(self : Term, s0 : Term, s : Term) -> Term {
             b.dcg_body(s0, s),
           ])
         }
-        _ => a.dcg_body(s0, s).or_(b.dcg_body(s0, s))
+        _ => a.dcg_body(s0, s).or(b.dcg_body(s0, s))
       }
     Compound("{}", [g]) => g.and_(s0.eq(s))
     Atom("!") => atom("!").and_(s0.eq(s))
@@ -123,7 +123,7 @@ fn dcg_terminals(t : Term, s0 : Term, s : Term) -> Term {
 ///|
 /// `phrase(Body, S0)`: true iff `Body` describes the list `S0`; equivalent
 /// to `phrase(Body, S0, [])`.
-fn Machine::phrase2_(self : Machine, b : Term, s0 : Term, mark : Int) -> Bool {
+fn Machine::phrase2(self : Machine, b : Term, s0 : Term, mark : Int) -> Bool {
   match b.deref(self.subst) {
     Var(_) => false
     b => {
@@ -137,7 +137,7 @@ fn Machine::phrase2_(self : Machine, b : Term, s0 : Term, mark : Int) -> Bool {
 /// `phrase(Body, S0, S)`: true iff `Body` describes the part of `S0` that
 /// remains `S`. The body is expanded against the current list arguments
 /// (cf. Scryer's `phrase/3`).
-fn Machine::phrase3_(
+fn Machine::phrase3(
   self : Machine,
   b : Term,
   s0 : Term,

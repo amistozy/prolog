@@ -9,7 +9,7 @@
 /// `findall(T, G, L)`: collects one fresh-variable-copied instance of `T`
 /// for every solution of `G`, in order. Like `not/1`, the sub-search runs
 /// with barriers so it cannot disturb the outer search.
-fn Machine::findall_(
+fn Machine::findall(
   self : Machine,
   template : Term,
   goal : Term,
@@ -53,7 +53,7 @@ fn fresh_vars(t : Term) -> Term {
 ///|
 /// `functor(T, F, N)`: the name/arity of a ground term, or builds a term
 /// from a name and arity when `T` is a variable.
-fn Machine::functor_(self : Machine, t : Term, f : Term, n : Term) -> Bool {
+fn Machine::functor(self : Machine, t : Term, f : Term, n : Term) -> Bool {
   match t.deref(self.subst) {
     Atom(name) => self.unify_both(f, atom(name), n, int(0))
     Int(i) => self.unify_both(f, Int(i), n, int(0))
@@ -104,7 +104,7 @@ fn Machine::unify_both(
 
 ///|
 /// `arg(N, T, A)`: the N-th argument (1-based) of a compound term or list.
-fn Machine::arg_(self : Machine, i : Term, t : Term, a : Term) -> Bool {
+fn Machine::arg(self : Machine, i : Term, t : Term, a : Term) -> Bool {
   match (i.deref(self.subst), t.deref(self.subst)) {
     (Int(k), Compound(_, args)) if k >= 1 && k <= args.length() =>
       self.unify_goal(a, args[k - 1])
@@ -116,7 +116,7 @@ fn Machine::arg_(self : Machine, i : Term, t : Term, a : Term) -> Bool {
 
 ///|
 /// `T =.. L`: converts between a term and its functor-and-arguments list.
-fn Machine::univ_(self : Machine, t : Term, l : Term) -> Bool {
+fn Machine::univ(self : Machine, t : Term, l : Term) -> Bool {
   match t.deref(self.subst) {
     Atom(name) => self.unify_goal(l, list([atom(name)]))
     Int(i) => self.unify_goal(l, list([Int(i)]))
@@ -175,7 +175,7 @@ fn is_ground(t : Term) -> Bool {
 /// `sort(L, S)` / `msort(L, S)`: sort a proper list in standard order;
 /// `sort` also removes duplicates (all duplicates are consecutive after
 /// sorting, so `dedup` is exactly right).
-fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
+fn Machine::sort(self : Machine, name : String, l : Term, s : Term) -> Bool {
   match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
       let resolved = elems.map(x => x.resolve(self.subst))
@@ -192,7 +192,7 @@ fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
 ///|
 /// `atom_concat(A, B, C)`: concatenates two atoms; when only `C` is ground,
 /// enumerates all splits via choice points.
-fn Machine::atom_concat_(
+fn Machine::atom_concat(
   self : Machine,
   a : Term,
   b : Term,
@@ -220,7 +220,7 @@ fn Machine::atom_concat_(
 
 ///|
 /// `call(G, A1, ..., An)`: appends the extra arguments to `G` and calls it.
-fn Machine::call_n_(self : Machine, args : Array[Term], mark : Int) -> Bool {
+fn Machine::call_n(self : Machine, args : Array[Term], mark : Int) -> Bool {
   let g = args[0].deref(self.subst)
   match g {
     Var(_) => false
@@ -266,7 +266,7 @@ fn try_write_code(sb : StringBuilder, k : Int) -> Bool {
 ///|
 /// `atom_codes(A, Cs)`: relates an atom to its list of character codes
 /// (both directions, cf. Scryer's `builtins.pl`).
-fn Machine::atom_codes_(self : Machine, a : Term, cs : Term) -> Bool {
+fn Machine::atom_codes(self : Machine, a : Term, cs : Term) -> Bool {
   match a.deref(self.subst) {
     Atom(s) => {
       let codes : Array[Term] = []
@@ -296,7 +296,7 @@ fn Machine::atom_codes_(self : Machine, a : Term, cs : Term) -> Bool {
 ///|
 /// `atom_chars(A, Cs)`: relates an atom to its list of single-character
 /// atoms (both directions).
-fn Machine::atom_chars_(self : Machine, a : Term, cs : Term) -> Bool {
+fn Machine::atom_chars(self : Machine, a : Term, cs : Term) -> Bool {
   match a.deref(self.subst) {
     Atom(s) => {
       let chars : Array[Term] = []
@@ -396,7 +396,7 @@ fn try_parse_double(s : String) -> Double? {
 ///|
 /// `number_codes(N, Cs)` / `number_chars(N, Cs)`: relates a number to its
 /// textual representation as codes or chars (both directions).
-fn Machine::number_chars_(
+fn Machine::number_chars(
   self : Machine,
   n : Term,
   cs : Term,
@@ -425,7 +425,7 @@ fn Machine::number_chars_(
 ///|
 /// `char_code(C, K)`: relates a single-character atom to its code (a UTF-16
 /// code unit).
-fn Machine::char_code_(self : Machine, c : Term, k : Term) -> Bool {
+fn Machine::char_code(self : Machine, c : Term, k : Term) -> Bool {
   match c.deref(self.subst) {
     Atom(s) if s.length() == 1 => self.unify_goal(k, int(s[0].to_int()))
     Var(_) =>
@@ -448,7 +448,7 @@ fn Machine::char_code_(self : Machine, c : Term, k : Term) -> Bool {
 ///|
 /// `atom_number(A, N)`: relates an atom to the number it spells (both
 /// directions).
-fn Machine::atom_number_(self : Machine, a : Term, n : Term) -> Bool {
+fn Machine::atom_number(self : Machine, a : Term, n : Term) -> Bool {
   match a.deref(self.subst) {
     Atom(s) =>
       match parse_number_text(s) {
@@ -469,7 +469,7 @@ fn Machine::atom_number_(self : Machine, a : Term, n : Term) -> Bool {
 /// `sub_atom(A, B, L, Af, S)`: relates an atom to a sub-atom starting at
 /// position `B` with length `L`, leaving `Af` characters after it. When `A`
 /// is ground, enumerates all matching splits (cf. Scryer's `builtins.pl`).
-fn Machine::sub_atom_(self : Machine, args : Array[Term], mark : Int) -> Bool {
+fn Machine::sub_atom(self : Machine, args : Array[Term], mark : Int) -> Bool {
   match args[0].deref(self.subst) {
     Atom(s) => {
       let n = s.length()
@@ -540,7 +540,7 @@ fn Machine::sub_atom_(self : Machine, args : Array[Term], mark : Int) -> Bool {
 /// Groups are produced in order of first appearance of the witness values
 /// (Scryer orders them by the standard term order instead); witnesses that
 /// remain unbound all fall into one group.
-fn Machine::bagof_(
+fn Machine::bagof(
   self : Machine,
   template : Term,
   goal : Term,

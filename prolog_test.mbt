@@ -258,25 +258,25 @@ test "negation, disjunction, cut" {
   let sy = variable("Y")
   let p = Program([
     Clause::fact(compound("parent", [john, mary])),
-    Clause(compound("single_parent", [sx]), compound("parent", [sx, sy]).not_()),
+    Clause(compound("single_parent", [sx]), compound("parent", [sx, sy]).not()),
   ])
   let x = variable("X")
   // not: john has a parent -> fails; an unbound atom succeeds
   let n1 = p
     .solve([
       compound("parent", [x, mary]),
-      compound("parent", [x, variable("_")]).not_(),
+      compound("parent", [x, variable("_")]).not(),
     ])
     .to_array()
   assert_eq(n1.length(), 0)
   let n2 = p
-    .solve([compound("parent", [atom("nobody"), variable("_")]).not_()])
+    .solve([compound("parent", [atom("nobody"), variable("_")]).not()])
     .to_array()
   assert_eq(n2.length(), 1)
   let n3 = p.solve([compound("single_parent", [atom("ann")])]).to_array()
   assert_eq(n3.length(), 1)
   // disjunction
-  let d = p.solve([x.eq(atom("a")).or_(x.eq(atom("b")))]).to_array()
+  let d = p.solve([x.eq(atom("a")).or(x.eq(atom("b")))]).to_array()
   assert_eq(d.length(), 2)
   assert_eq(d[0].to_string(), "X = a")
   assert_eq(d[1].to_string(), "X = b")

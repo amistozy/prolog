@@ -313,7 +313,7 @@ fn fresh_id() -> Int {
 ///|
 /// `not(g)`: succeeds iff `g` has no solution. `g` runs with a fresh cut
 /// mark and fresh barriers, so cuts inside `g` cannot escape its scope.
-fn Machine::not_(self : Machine, g : Term) -> Bool {
+fn Machine::not(self : Machine, g : Term) -> Bool {
   let saved_stack = self.stack
   let saved_subst = self.subst
   let choice_barrier = self.choices.length()

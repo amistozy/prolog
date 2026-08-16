@@ -182,7 +182,7 @@ fn Machine::run_builtin(
   match (name, args.length()) {
     ("=", 2) => Some(self.unify_goal(args[0], args[1]))
     ("\\=", 2) => Some(args[0].unify(args[1], self.subst) is None)
-    ("dif", 2) => Some(self.dif_(args[0], args[1]))
+    ("dif", 2) => Some(self.dif(args[0], args[1]))
     ("==", 2) =>
       Some(
         identical_terms(args[0].deref(self.subst), args[1].deref(self.subst)),
@@ -207,7 +207,7 @@ fn Machine::run_builtin(
         Some(b) => Some(b)
         None => Some(false)
       }
-    ("not", 1) => Some(self.not_(args[0]))
+    ("not", 1) => Some(self.not(args[0]))
     ("call", 1) => {
       self.push_goal(args[0], mark)
       Some(true)
@@ -218,7 +218,7 @@ fn Machine::run_builtin(
     | ("call", 5)
     | ("call", 6)
     | ("call", 7)
-    | ("call", 8) => Some(self.call_n_(args, mark))
+    | ("call", 8) => Some(self.call_n(args, mark))
     ("ignore", 1) => {
       // ignore(G): call G, succeed whether or not G has a solution.
       self.push_goal(
@@ -236,17 +236,17 @@ fn Machine::run_builtin(
       collect_vars_into(resolved, seen, vs)
       Some(self.unify_goal(args[1], list(vs.map(v => Var(v)))))
     }
-    ("phrase", 2) => Some(self.phrase2_(args[0], args[1], mark))
-    ("phrase", 3) => Some(self.phrase3_(args[0], args[1], args[2], mark))
-    ("atom_codes", 2) => Some(self.atom_codes_(args[0], args[1]))
-    ("atom_chars", 2) => Some(self.atom_chars_(args[0], args[1]))
-    ("number_codes", 2) => Some(self.number_chars_(args[0], args[1], true))
-    ("number_chars", 2) => Some(self.number_chars_(args[0], args[1], false))
-    ("char_code", 2) => Some(self.char_code_(args[0], args[1]))
-    ("atom_number", 2) => Some(self.atom_number_(args[0], args[1]))
-    ("sub_atom", 5) => Some(self.sub_atom_(args, mark))
-    ("bagof", 3) => Some(self.bagof_(args[0], args[1], args[2], false, mark))
-    ("setof", 3) => Some(self.bagof_(args[0], args[1], args[2], true, mark))
+    ("phrase", 2) => Some(self.phrase2(args[0], args[1], mark))
+    ("phrase", 3) => Some(self.phrase3(args[0], args[1], args[2], mark))
+    ("atom_codes", 2) => Some(self.atom_codes(args[0], args[1]))
+    ("atom_chars", 2) => Some(self.atom_chars(args[0], args[1]))
+    ("number_codes", 2) => Some(self.number_chars(args[0], args[1], true))
+    ("number_chars", 2) => Some(self.number_chars(args[0], args[1], false))
+    ("char_code", 2) => Some(self.char_code(args[0], args[1]))
+    ("atom_number", 2) => Some(self.atom_number(args[0], args[1]))
+    ("sub_atom", 5) => Some(self.sub_atom(args, mark))
+    ("bagof", 3) => Some(self.bagof(args[0], args[1], args[2], false, mark))
+    ("setof", 3) => Some(self.bagof(args[0], args[1], args[2], true, mark))
     ("write", 1) => {
       println(args[0].resolve(self.subst))
       Some(true)
@@ -265,7 +265,7 @@ fn Machine::run_builtin(
     | ("string", 1)
     | ("compound", 1)
     | ("list", 1) => Some(type_test(name, args[0], self.subst))
-    ("\\+", 1) => Some(self.not_(args[0]))
+    ("\\+", 1) => Some(self.not(args[0]))
     ("once", 1) => {
       let m = self.choices.length()
       self.push_goal(atom("!"), m)
@@ -276,11 +276,11 @@ fn Machine::run_builtin(
       self.push_choice(Goal(goal=atom("repeat"), mark~))
       Some(true)
     }
-    ("findall", 3) => Some(self.findall_(args[0], args[1], args[2]))
-    ("forall", 2) => Some(self.not_(args[0].and_(args[1].not_())))
-    ("functor", 3) => Some(self.functor_(args[0], args[1], args[2]))
-    ("arg", 3) => Some(self.arg_(args[0], args[1], args[2]))
-    ("=..", 2) => Some(self.univ_(args[0], args[1]))
+    ("findall", 3) => Some(self.findall(args[0], args[1], args[2]))
+    ("forall", 2) => Some(self.not(args[0].and_(args[1].not())))
+    ("functor", 3) => Some(self.functor(args[0], args[1], args[2]))
+    ("arg", 3) => Some(self.arg(args[0], args[1], args[2]))
+    ("=..", 2) => Some(self.univ(args[0], args[1]))
     ("ground", 1) => Some(is_ground(args[0].resolve(self.subst)))
     ("compare", 3) => {
       let c = args[1]
@@ -289,7 +289,7 @@ fn Machine::run_builtin(
       let ord = if c < 0 { "<" } else if c > 0 { ">" } else { "=" }
       Some(self.unify_goal(args[0], atom(ord)))
     }
-    ("sort", 2) | ("msort", 2) => Some(self.sort_(name, args[0], args[1]))
+    ("sort", 2) | ("msort", 2) => Some(self.sort(name, args[0], args[1]))
     ("@<", 2) | ("@>", 2) | ("@=<", 2) | ("@>=", 2) => {
       let c = args[0]
         .resolve(self.subst)
@@ -310,7 +310,7 @@ fn Machine::run_builtin(
         _ => Some(false)
       }
     ("atom_concat", 3) =>
-      Some(self.atom_concat_(args[0], args[1], args[2], mark))
+      Some(self.atom_concat(args[0], args[1], args[2], mark))
     _ => None
   }
 }

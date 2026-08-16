@@ -31,7 +31,7 @@
 ///   assert_eq(p.solve([atom("a").dif(atom("a"))]).to_array().length(), 0)
 /// }
 /// ```
-fn Machine::dif_(self : Machine, a : Term, b : Term) -> Bool {
+fn Machine::dif(self : Machine, a : Term, b : Term) -> Bool {
   let da = a.deref(self.subst)
   let db = b.deref(self.subst)
   if identical_terms(da, db) {

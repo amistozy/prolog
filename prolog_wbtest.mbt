@@ -166,12 +166,12 @@ test "machine: cut inside not stays local" {
   let x = variable("X")
   // not((true, !)) fails since (true, !) succeeds -> no answers
   let answers = p
-    .solve([compound("p", [x]), atom("true").and_(atom("!")).not_()])
+    .solve([compound("p", [x]), atom("true").and_(atom("!")).not()])
     .to_array()
   assert_eq(answers.length(), 0)
   // not(p(99)) succeeds, and both p solutions survive
   let answers2 = p
-    .solve([compound("p", [x]), compound("p", [int(99)]).not_()])
+    .solve([compound("p", [x]), compound("p", [int(99)]).not()])
     .to_array()
   assert_eq(answers2.length(), 2)
   assert_eq(answers2[1].to_string(), "X = 2")

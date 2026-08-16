@@ -113,7 +113,7 @@ pub fn Term::and_(self : Term, b : Term) -> Term {
 
 ///|
 /// Builds the disjunction `(a ; b)`.
-pub fn Term::or_(self : Term, b : Term) -> Term {
+pub fn Term::or(self : Term, b : Term) -> Term {
   Compound(";", [self, b])
 }
 
@@ -131,7 +131,7 @@ pub fn Term::neq(self : Term, other : Term) -> Term {
 
 ///|
 /// Builds the goal `dif(self, other)`: a disequality constraint that delays
-/// the decision until the two terms are comparable (see [`Machine::dif_`]).
+/// the decision until the two terms are comparable (see [`Machine::dif`]).
 pub fn Term::dif(self : Term, other : Term) -> Term {
   Compound("dif", [self, other])
 }
@@ -156,6 +156,6 @@ pub fn Term::is_(self : Term, expr : Term) -> Term {
 
 ///|
 /// Builds the goal `not(self)`.
-pub fn Term::not_(self : Term) -> Term {
+pub fn Term::not(self : Term) -> Term {
   Compound("not", [self])
 }
