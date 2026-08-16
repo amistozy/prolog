@@ -111,7 +111,6 @@ pub fn Term::not_identical(Self, Self) -> Self
 pub fn Term::or_(Self, Self) -> Self
 pub fn Term::resolve(Self, @hashmap.HashMap[Int, Self]) -> Self
 pub fn Term::unify(Self, Self, @hashmap.HashMap[Int, Self]) -> @hashmap.HashMap[Int, Self]?
-pub impl FromLiteral for Term
 pub impl Add for Term
 pub impl BitAnd for Term
 pub impl BitOr for Term
@@ -136,6 +135,3 @@ pub(all) struct VarRef {
 pub type Subst = @hashmap.HashMap[Int, Term]
 
 // Traits
-pub trait FromLiteral {
-  fn from_literal(Int) -> Self
-}

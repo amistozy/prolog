@@ -26,8 +26,7 @@ pub(all) struct VarRef {
 ///
 /// - atoms: `Atom("john")` or [`atom`]
 /// - variables: `Var(ref)` or [`variable`]
-/// - integers: `Int(42)` or a literal `let n : Term = 42` (via
-///   [`FromLiteral`])
+/// - integers: `Int(42)` or [`int`]
 /// - floats: `Float(1.5)` or [`float`]
 /// - strings: `Str("text")` or [`str`]
 /// - proper lists: `List([...])` or [`list`]
@@ -106,9 +105,7 @@ pub fn float(d : Double) -> Term {
 }
 
 ///|
-/// An integer term. Inside the package (or a single script) you can also
-/// write an integer literal directly, e.g. `let n : Term = 42`; from other
-/// packages use `int(42)` (or the variant `Term::Int(42)`).
+/// An integer term, e.g. `int(42)` (or the variant `Term::Int(42)`).
 pub fn int(i : Int) -> Term {
   Int(i)
 }
@@ -152,17 +149,6 @@ pub fn list_tail(elems : Array[Term], tail : Term) -> Term {
 /// The empty list `[]`.
 pub fn empty_list() -> Term {
   Atom("[]")
-}
-
-///|
-/// Enables integer literals as terms: `let n : Term = 42`.
-pub trait FromLiteral {
-  fn from_literal(Int) -> Self
-}
-
-///|
-pub impl FromLiteral for Term with fn from_literal(i) {
-  Int(i)
 }
 
 ///|
