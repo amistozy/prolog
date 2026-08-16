@@ -116,24 +116,16 @@ test "list_parts" {
 ///|
 test "eval_arith" {
   assert_eq(
-    match
-      eval_arith(
-        compound("+", [int(1), compound("*", [int(2), int(3)])]),
-        @immut_hashmap.HashMap([]),
-      ) {
+    match eval_arith(int(1) + int(2) * int(3), @immut_hashmap.HashMap([])) {
       Some(v) => v.to_string()
       None => abort("expected a value")
     },
     "7",
   )
-  assert_true(
-    eval_arith(compound("/", [int(1), int(0)]), @immut_hashmap.HashMap([]))
-    is None,
-  )
+  assert_true(eval_arith(int(1) / int(0), @immut_hashmap.HashMap([])) is None)
   assert_true(eval_arith(variable("X"), @immut_hashmap.HashMap([])) is None)
   assert_eq(
-    match
-      eval_arith(compound("mod", [int(-7), int(2)]), @immut_hashmap.HashMap([])) {
+    match eval_arith(int(-7) % int(2), @immut_hashmap.HashMap([])) {
       Some(v) => v.to_string()
       None => abort("expected a value")
     },

@@ -197,18 +197,16 @@ test "stdlib: length, reverse, between" {
 test "arithmetic: is and comparisons" {
   let p = Program([])
   let x = variable("X")
-  let eval = p
-    .solve([x.is_(compound("*", [compound("+", [int(2), int(3)]), int(4)]))])
-    .to_array()
+  let eval = p.solve([x.is_((int(2) + int(3)) * int(4))]).to_array()
   assert_eq(eval.length(), 1)
   assert_eq(eval[0].to_string(), "X = 20")
-  let flt = p.solve([x.is_(compound("/", [int(7), int(2)]))]).to_array()
+  let flt = p.solve([x.is_(int(7) / int(2))]).to_array()
   assert_eq(flt[0].to_string(), "X = 3.5")
   let idiv = p.solve([x.is_(compound("//", [int(7), int(2)]))]).to_array()
   assert_eq(idiv[0].to_string(), "X = 3")
   let flr = p.solve([x.is_(compound("div", [int(-7), int(2)]))]).to_array()
   assert_eq(flr[0].to_string(), "X = -4")
-  let m = p.solve([x.is_(compound("mod", [int(-7), int(2)]))]).to_array()
+  let m = p.solve([x.is_(int(-7) % int(2))]).to_array()
   assert_eq(m[0].to_string(), "X = 1")
   let neg = p.solve([x.is_(-int(5))]).to_array()
   assert_eq(neg[0].to_string(), "X = -5")
@@ -220,7 +218,7 @@ test "arithmetic: is and comparisons" {
   let gt = p.solve([compound(">", [int(1), int(2)])]).to_array()
   assert_eq(gt.length(), 0)
   // is fails on unbound arithmetic
-  let bad = p.solve([x.is_(compound("+", [x, int(1)]))]).to_array()
+  let bad = p.solve([x.is_(x + int(1))]).to_array()
   assert_eq(bad.length(), 0)
 }
 

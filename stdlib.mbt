@@ -136,7 +136,7 @@ fn length_clauses() -> Array[Clause] {
     Clause::fact(compound("length", [empty_list(), Int(0)])),
     Clause(
       compound("length", [cons(variable("_"), t), n]),
-      compound("length", [t, n1]) & n.is_(Compound("+", [n1, Int(1)])),
+      compound("length", [t, n1]) & n.is_(n1 + Int(1)),
     ),
   ]
 }
@@ -172,7 +172,7 @@ fn between_clauses() -> Array[Clause] {
     Clause(
       compound("between", [l, u, x]),
       Compound("<", [l, u]) &
-      l1.is_(Compound("+", [l, Int(1)])) &
+      l1.is_(l + Int(1)) &
       compound("between", [l1, u, x]),
     ),
   ]
@@ -198,12 +198,12 @@ fn nth_clauses() -> Array[Clause] {
     Clause::fact(compound("nth0", [int(0), cons(i, t), i])),
     Clause(
       compound("nth0", [i2, cons(variable("_"), t2), x2]),
-      compound("nth0", [m, t2, x2]) & i2.is_(Compound("+", [m, Int(1)])),
+      compound("nth0", [m, t2, x2]) & i2.is_(m + Int(1)),
     ),
     Clause::fact(compound("nth1", [int(1), cons(i3, t), i3])),
     Clause(
       compound("nth1", [i4, cons(variable("_"), t4), x4]),
-      compound("nth1", [m2, t4, x4]) & i4.is_(Compound("+", [m2, Int(1)])),
+      compound("nth1", [m2, t4, x4]) & i4.is_(m2 + Int(1)),
     ),
   ]
 }
@@ -234,7 +234,7 @@ fn sum_list_clauses() -> Array[Clause] {
     Clause::fact(compound("sum_list", [empty_list(), int(0)])),
     Clause(
       compound("sum_list", [cons(x, t), s]),
-      compound("sum_list", [t, s1]) & s.is_(Compound("+", [s1, x])),
+      compound("sum_list", [t, s1]) & s.is_(s1 + x),
     ),
   ]
 }
@@ -426,12 +426,12 @@ fn succ_clauses() -> Array[Clause] {
       compound("integer", [s]) &
       atom("!") &
       Compound(">", [s, int(0)]) &
-      i.is_(Compound("-", [s, int(1)])),
+      i.is_(s - int(1)),
     ),
     // succ(I, S) :- integer(I), !, S is I + 1.
     Clause(
       compound("succ", [i, s]),
-      compound("integer", [i]) & atom("!") & s.is_(Compound("+", [i, int(1)])),
+      compound("integer", [i]) & atom("!") & s.is_(i + int(1)),
     ),
   ]
 }
@@ -449,21 +449,21 @@ fn plus_clauses() -> Array[Clause] {
       compound("integer", [a]) &
       compound("integer", [b]) &
       atom("!") &
-      c.is_(Compound("+", [a, b])),
+      c.is_(a + b),
     ),
     Clause(
       compound("plus", [a, b, c]),
       compound("integer", [a]) &
       compound("integer", [c]) &
       atom("!") &
-      b.is_(Compound("-", [c, a])),
+      b.is_(c - a),
     ),
     Clause(
       compound("plus", [a, b, c]),
       compound("integer", [b]) &
       compound("integer", [c]) &
       atom("!") &
-      a.is_(Compound("-", [c, b])),
+      a.is_(c - b),
     ),
   ]
 }
@@ -491,7 +491,7 @@ fn numlist_clauses() -> Array[Clause] {
     Clause(
       compound("numlist_", [l2, u2, cons(l2, ns2)]),
       Compound("<", [l2, u2]) &
-      l1.is_(Compound("+", [l2, int(1)])) &
+      l1.is_(l2 + int(1)) &
       compound("numlist_", [l1, u2, ns2]),
     ),
   ]
