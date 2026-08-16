@@ -126,7 +126,7 @@ test "eval_arith" {
 test "machine: fresh variables per clause invocation" {
   // same clause invoked twice in one query must not share variables
   let t = variable("T")
-  let p = try! Program([
+  let p = Program([
     Clause(compound("twice", [t]), compound("t", [t]).and_(compound("t", [t]))),
     Clause::fact(compound("t", [int(1)])),
     Clause::fact(compound("t", [int(2)])),
@@ -140,7 +140,7 @@ test "machine: fresh variables per clause invocation" {
 
 ///|
 test "machine: cut inside not stays local" {
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("p", [int(1)])),
     Clause::fact(compound("p", [int(2)])),
   ])
@@ -165,7 +165,7 @@ test "machine: deep recursion does not overflow" {
   for i in 0..<5000 {
     clauses.push(Clause::fact(compound("next", [int(i), int(i + 1)])))
   }
-  let p = try! Program(clauses)
+  let p = Program(clauses)
   let x = variable("X")
   let answers = p.solve([compound("next", [int(0), x])]).to_array()
   assert_eq(answers.length(), 1)

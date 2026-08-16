@@ -58,7 +58,7 @@ test "family database: multiple solutions and conjunction" {
   let mary = atom("mary")
   let jane = atom("jane")
   let bob = atom("bob")
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("parent", [john, mary])),
     Clause::fact(compound("parent", [john, jane])),
     Clause::fact(compound("parent", [mary, bob])),
@@ -88,7 +88,7 @@ test "recursive rules: ancestor" {
   let ax = variable("X")
   let ay = variable("Y")
   let az = variable("Z")
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("parent", [john, mary])),
     Clause::fact(compound("parent", [mary, bob])),
     // ancestor(X, Y) :- parent(X, Y).
@@ -194,7 +194,7 @@ test "stdlib: length, reverse, between" {
 
 ///|
 test "arithmetic: is and comparisons" {
-  let p = try! Program([])
+  let p = Program([])
   let x = variable("X")
   let eval = p
     .solve([x.is_(compound("*", [compound("+", [int(2), int(3)]), int(4)]))])
@@ -225,7 +225,7 @@ test "arithmetic: is and comparisons" {
 
 ///|
 test "unification builtins: equal, neq, identical, not identical" {
-  let p = try! Program([])
+  let p = Program([])
   let x = variable("X")
   let y = variable("Y")
   let eq1 = p.solve([x.eq(atom("a"))]).to_array()
@@ -256,7 +256,7 @@ test "negation, disjunction, cut" {
   let mary = atom("mary")
   let sx = variable("X")
   let sy = variable("Y")
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("parent", [john, mary])),
     Clause(compound("single_parent", [sx]), compound("parent", [sx, sy]).not_()),
   ])
@@ -281,7 +281,7 @@ test "negation, disjunction, cut" {
   assert_eq(d[0].to_string(), "X = a")
   assert_eq(d[1].to_string(), "X = b")
   // cut: keep only the first solution of a predicate
-  let p2 = try! Program([
+  let p2 = Program([
     Clause::fact(compound("choice", [int(1)])),
     Clause::fact(compound("choice", [int(2)])),
     Clause::fact(compound("choice", [int(3)])),
@@ -298,7 +298,7 @@ test "negation, disjunction, cut" {
 test "lazy solutions with an infinite program" {
   // natural numbers: nat(0). nat(s(N)) :- nat(N).
   let n = variable("N")
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("nat", [int(0)])),
     Clause(compound("nat", [compound("s", [n])]), compound("nat", [n])),
   ])
@@ -321,7 +321,7 @@ test "program validation raises on invalid heads" {
 
 ///|
 test "type tests" {
-  let p = try! Program([])
+  let p = Program([])
   let x = variable("X")
   let is_var = p.solve([compound("var", [x])]).to_array()
   assert_eq(is_var.length(), 1)
@@ -339,7 +339,7 @@ test "type tests" {
 
 ///|
 test "meta predicates: findall, once, forall, repeat" {
-  let p = try! Program([
+  let p = Program([
     Clause::fact(compound("color", [atom("red")])),
     Clause::fact(compound("color", [atom("green")])),
     Clause::fact(compound("color", [atom("blue")])),
@@ -384,7 +384,7 @@ test "meta predicates: findall, once, forall, repeat" {
 
 ///|
 test "if-then-else" {
-  let p = try! Program([])
+  let p = Program([])
   // (A -> B ; C): A holds -> B
   let t1 = p.solve([parse_term("(true -> X = 2 ; X = 3)")]).to_array()
   assert_eq(t1.length(), 1)
@@ -394,7 +394,7 @@ test "if-then-else" {
   assert_eq(t2.length(), 1)
   assert_eq(t2[0].to_string(), "X = 3")
   // soft cut: only the committed branch is kept
-  let p2 = try! Program([
+  let p2 = Program([
     Clause::fact(compound("c", [int(1)])),
     Clause::fact(compound("c", [int(2)])),
   ])
@@ -412,7 +412,7 @@ test "if-then-else" {
 
 ///|
 test "term manipulation: functor, arg, univ, ground" {
-  let p = try! Program([])
+  let p = Program([])
   let f = variable("F")
   let n = variable("N")
   let a = variable("A")
@@ -446,7 +446,7 @@ test "term manipulation: functor, arg, univ, ground" {
 
 ///|
 test "term ordering: compare, sort, msort, at" {
-  let p = try! Program([])
+  let p = Program([])
   let o = variable("O")
   let c1 = p.solve([compound("compare", [o, int(1), int(2)])]).to_array()
   assert_eq(c1[0].to_string(), "O = <")
@@ -478,7 +478,7 @@ test "term ordering: compare, sort, msort, at" {
 
 ///|
 test "atom operations" {
-  let p = try! Program([])
+  let p = Program([])
   let n = variable("N")
   let al = p.solve([compound("atom_length", [atom("hello"), n])]).to_array()
   assert_eq(al[0].to_string(), "N = 5")
@@ -557,7 +557,7 @@ test "parsing an entire program and querying it" {
     #|ancestor(X, Y) :- parent(X, Y).
     #|ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
     #|
-  let p = try! parse_program(src)
+  let p = parse_program(src)
   let y = variable("Y")
   let answers = p.solve([compound("ancestor", [atom("john"), y])]).to_array()
   assert_eq(answers.length(), 3)
