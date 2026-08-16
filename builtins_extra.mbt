@@ -174,24 +174,17 @@ fn is_ground(t : Term) -> Bool {
 
 ///|
 /// `sort(L, S)` / `msort(L, S)`: sort a proper list in standard order;
-/// `sort` also removes duplicates.
+/// `sort` also removes duplicates (all duplicates are consecutive after
+/// sorting, so `dedup` is exactly right).
 fn Machine::sort_(self : Machine, name : String, l : Term, s : Term) -> Bool {
   match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
       let resolved = elems.map(x => x.resolve(self.subst))
       resolved.sort_by(Term::compare_terms)
-      let dedup = if name == "sort" {
-        let out : Array[Term] = []
-        for x in resolved {
-          if out.length() == 0 || out[out.length() - 1].compare_terms(x) != 0 {
-            out.push(x)
-          }
-        }
-        out
-      } else {
-        resolved
+      if name == "sort" {
+        resolved.dedup()
       }
-      self.unify_goal(s, list(dedup))
+      self.unify_goal(s, list(resolved))
     }
     _ => false
   }
