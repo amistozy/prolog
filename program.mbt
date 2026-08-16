@@ -130,6 +130,13 @@ pub fn Term::neq(self : Term, other : Term) -> Term {
 }
 
 ///|
+/// Builds the goal `dif(self, other)`: a disequality constraint that delays
+/// the decision until the two terms are comparable (see [`Machine::dif_`]).
+pub fn Term::dif(self : Term, other : Term) -> Term {
+  Compound("dif", [self, other])
+}
+
+///|
 /// Builds the goal `self == other` (identical terms).
 pub fn Term::identical(self : Term, other : Term) -> Term {
   Compound("==", [self, other])

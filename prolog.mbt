@@ -54,8 +54,10 @@
 ///
 /// - terms: [`Term::Term`] (parses Prolog syntax), [`variable`], [`atom`],
 ///   [`int`], [`list`], [`compound`], [`cons`], [`list_tail`], [`empty_list`]
-/// - clauses: [`Clause`], [`Clause::fact`]
+/// - clauses: [`Clause`], [`Clause::fact`]; DCG rules: [`dcg_rule`],
+///   [`Term::dcg_body`] (with `phrase/2`, `phrase/3` builtins)
 /// - programs: [`Program`], [`Program::stdlib`]
 /// - queries: [`Program::solve`], [`Program::solve_first`], [`Program::solve_all`],
-///   [`Answer`]
+///   [`Answer`], [`Answer::get`]
+/// - constraints: [`Term::dif`] (disequality, cf. Scryer's `dif/2`)
 /// - library predicates: [`stdlib`]

@@ -13,6 +13,8 @@ pub fn compound(String, Array[Term]) -> Term
 
 pub fn cons(Term, Term) -> Term
 
+pub fn dcg_rule(Term, Term) -> Clause
+
 pub fn empty_list() -> Term
 
 pub fn float(Double) -> Term
@@ -50,8 +52,10 @@ type Alt derive(@debug.Debug)
 
 pub struct Answer {
   bindings : Map[String, Term]
+  order : Array[String]
 } derive(@debug.Debug)
 pub fn Answer::from_subst(@hashmap.HashMap[Int, Term], Array[Term]) -> Self
+pub fn Answer::get(Self, String) -> Term?
 pub impl Show for Answer
 
 type Choice derive(@debug.Debug)
@@ -94,7 +98,9 @@ pub(all) enum Term {
 pub fn Term::Term(String) -> Self raise ParseError
 pub fn Term::and_(Self, Self) -> Self
 pub fn Term::compare_terms(Self, Self) -> Int
+pub fn Term::dcg_body(Self, Self, Self) -> Self
 pub fn Term::deref(Self, @hashmap.HashMap[Int, Self]) -> Self
+pub fn Term::dif(Self, Self) -> Self
 pub fn Term::eq(Self, Self) -> Self
 pub fn Term::head_key(Self) -> (String, Int)?
 pub fn Term::identical(Self, Self) -> Self

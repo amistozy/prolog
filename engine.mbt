@@ -29,17 +29,25 @@ enum Alt {
 struct Choice {
   goals : FStack
   subst : Subst
+  /// Number of active `dif/2` constraints when the choice point was pushed;
+  /// backtracking truncates `Machine.diffs` back to this length.
+  diffs_len : Int
   alt : Alt
 } derive(Debug)
 
 ///|
 /// The SLD resolution machine. `subst` maps are never mutated in place, so
 /// each choice point holds an implicit snapshot of the substitution.
+///
+/// `diffs` holds the active `dif/2` disequality constraints; like `choices`,
+/// it is truncated on backtracking (see [`Choice::diffs_len`]).
 struct Machine {
   prog : Program
   mut stack : FStack
   mut subst : Subst
   choices : Array[Choice]
+  /// Active `dif/2` constraints, in the order they were posted.
+  diffs : Array[(Term, Term)]
   /// True right after a solution has been yielded; the next step must
   /// resume by backtracking.
   mut resumed : Bool
@@ -52,8 +60,45 @@ fn Machine::new(prog : Program) -> Machine {
     stack: FNil,
     subst: @immut_hashmap.HashMap([]),
     choices: [],
+    diffs: [],
     resumed: false,
   }
+}
+
+///|
+/// Records a choice point, snapshotting the current goal stack, substitution
+/// and `dif/2` constraint count.
+fn Machine::push_choice(self : Machine, alt : Alt) -> Unit {
+  self.choices.push({
+    goals: self.stack,
+    subst: self.subst,
+    diffs_len: self.diffs.length(),
+    alt,
+  })
+}
+
+///|
+/// Commits `s` as the machine's substitution. Returns `false` when `s`
+/// violates an active `dif/2` constraint (the caller must then fail and
+/// backtrack).
+fn Machine::commit(self : Machine, s : Subst) -> Bool {
+  self.subst = s
+  self.check_diffs(s)
+}
+
+///|
+/// Checks every active `dif/2` constraint against substitution `s`: if any
+/// two constrained terms have become identical, the constraint is violated.
+/// Permanently-satisfied constraints are kept (they never fail again), so
+/// this is a pure predicate over `s`.
+fn Machine::check_diffs(self : Machine, s : Subst) -> Bool {
+  for p in self.diffs {
+    let (a, b) = p
+    if identical_terms(a.deref(s), b.deref(s)) {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -117,6 +162,7 @@ fn Machine::backtrack(self : Machine, choice_barrier : Int) -> Bool {
       Some(ch) => {
         self.stack = ch.goals
         self.subst = ch.subst
+        self.diffs.truncate(ch.diffs_len)
         match ch.alt {
           Clauses(goal=g, key=k, next=n) => {
             let mark = self.choices.length()
@@ -164,11 +210,7 @@ fn Machine::execute(self : Machine, fr : Frame) -> Bool {
           // (A -> B ; C): soft cut — commit to B once A succeeds.
           Compound("->", [cond, then]) => {
             let m0 = self.choices.length()
-            self.choices.push({
-              goals: self.stack,
-              subst: self.subst,
-              alt: Goal(goal=args[1], mark=fr.mark),
-            })
+            self.push_choice(Goal(goal=args[1], mark=fr.mark))
             // Execute order (LIFO): cond, then `!`, then the committed
             // branch.
             self.push_goal(then, fr.mark)
@@ -177,11 +219,7 @@ fn Machine::execute(self : Machine, fr : Frame) -> Bool {
             true
           }
           _ => {
-            self.choices.push({
-              goals: self.stack,
-              subst: self.subst,
-              alt: Goal(goal=args[1], mark=fr.mark),
-            })
+            self.push_choice(Goal(goal=args[1], mark=fr.mark))
             self.push_goal(args[0], fr.mark)
             true
           }
@@ -231,20 +269,18 @@ fn Machine::try_clauses(
     let (head, body) = fresh_rename(cl)
     match g.unify(head, self.subst) {
       None => continue
-      Some(s2) => {
-        if i + 1 < cls.length() {
-          self.choices.push({
-            goals: self.stack,
-            subst: self.subst,
-            alt: Clauses(goal=g, key~, next=i + 1),
-          })
+      Some(s2) =>
+        // Reject the clause when the binding violates a `dif/2` constraint.
+        if self.check_diffs(s2) {
+          if i + 1 < cls.length() {
+            self.push_choice(Clauses(goal=g, key~, next=i + 1))
+          }
+          self.subst = s2
+          if !(body is Atom("true")) {
+            self.push_goal(body, mark)
+          }
+          return true
         }
-        self.subst = s2
-        if !(body is Atom("true")) {
-          self.push_goal(body, mark)
-        }
-        return true
-      }
     }
   }
   false
@@ -276,11 +312,13 @@ fn Machine::not_(self : Machine, g : Term) -> Bool {
   let saved_stack = self.stack
   let saved_subst = self.subst
   let choice_barrier = self.choices.length()
+  let diff_barrier = self.diffs.length()
   self.push_goal(g, choice_barrier)
   let succeeded = self.step(saved_stack, choice_barrier) is Some(_)
   self.stack = saved_stack
   self.subst = saved_subst
   self.choices.truncate(choice_barrier)
+  self.diffs.truncate(diff_barrier)
   self.resumed = false
   !succeeded
 }
@@ -301,8 +339,13 @@ pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] 
 ///|
 /// One answer of a query: the bindings of the query's variables, keyed by
 /// name (anonymous variables starting with `_` are skipped).
+///
+/// `order` records the names in order of first appearance in the query, so
+/// answers render deterministically as `X = john, Y = mary` regardless of
+/// hash-map iteration order.
 pub struct Answer {
   bindings : Map[String, Term]
+  order : Array[String]
 } derive(Debug)
 
 ///|
@@ -345,27 +388,47 @@ fn collect_vars_into(
 /// Bindings that just say `X = X` (an unbound query variable) are omitted.
 pub fn Answer::from_subst(subst : Subst, goals : Array[Term]) -> Answer {
   let bindings : Map[String, Term] = Map([])
+  let order : Array[String] = []
   for v in collect_query_vars(goals) {
     if v.name != "" && !v.name.has_prefix("_") && !bindings.contains(v.name) {
       let value = Var(v).resolve(subst)
       match value {
-        Var(v2) => if v2.id != v.id { bindings[v.name] = value }
-        _ => bindings[v.name] = value
+        Var(v2) =>
+          if v2.id != v.id {
+            bindings[v.name] = value
+            order.push(v.name)
+          }
+        _ => {
+          bindings[v.name] = value
+          order.push(v.name)
+        }
       }
     }
   }
-  { bindings, }
+  { bindings, order }
+}
+
+///|
+/// The binding of the query variable named `name`, if any.
+///
+/// ```mbt check
+/// test {
+///   let x = variable("X")
+///   let p = Program([Clause::fact(compound("p", [atom("a")]))])
+///   let a = p.solve_first([compound("p", [x])]).unwrap()
+///   assert_eq(a.get("X"), Some(atom("a")))
+///   assert_eq(a.get("Y"), None)
+/// }
+/// ```
+pub fn Answer::get(self : Answer, name : String) -> Term? {
+  self.bindings.get(name)
 }
 
 ///|
 /// Renders an answer as `X = john, Y = mary` (or `true` for no bindings).
+/// Bindings are listed in order of first appearance in the query.
 pub impl Show for Answer with fn to_string(self) {
-  let parts = self.bindings
-    .to_array()
-    .map(kv => {
-      let (k, v) = kv
-      "\{k} = \{v}"
-    })
+  let parts = self.order.map(name => "\{name} = \{self.bindings[name]}")
   if parts.length() == 0 {
     "true"
   } else {

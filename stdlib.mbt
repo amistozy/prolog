@@ -6,6 +6,8 @@
 /// - `member/2`, `append/3`, `length/2`, `reverse/2`, `between/3`
 /// - `nth0/3`, `nth1/3`, `last/2`, `sum_list/2`, `max_list/2`, `min_list/2`
 /// - `select/3`, `flatten/2`, `permutation/2`
+/// - `maplist/2..4`, `foldl/4`, `memberchk/2`, `selectchk/3` (need `call/2+`)
+/// - `succ/2`, `plus/3`, `numlist/3`, `prefix/2`, `suffix/2`, `same_length/2`
 ///
 /// ```mbt check
 /// test {
@@ -58,6 +60,33 @@ pub fn Program::stdlib() -> Program {
     clauses.push(c)
   }
   for c in permutation_clauses() {
+    clauses.push(c)
+  }
+  for c in maplist_clauses() {
+    clauses.push(c)
+  }
+  for c in foldl_clauses() {
+    clauses.push(c)
+  }
+  for c in memberchk_clauses() {
+    clauses.push(c)
+  }
+  for c in selectchk_clauses() {
+    clauses.push(c)
+  }
+  for c in succ_clauses() {
+    clauses.push(c)
+  }
+  for c in plus_clauses() {
+    clauses.push(c)
+  }
+  for c in numlist_clauses() {
+    clauses.push(c)
+  }
+  for c in prefix_suffix_clauses() {
+    clauses.push(c)
+  }
+  for c in same_length_clauses() {
     clauses.push(c)
   }
   try! Program(clauses)
@@ -303,6 +332,205 @@ fn permutation_clauses() -> Array[Clause] {
     Clause(
       compound("permutation", [l, cons(h, t)]),
       compound("select", [h, l, r]).and_(compound("permutation", [r, t])),
+    ),
+  ]
+}
+
+///|
+/// `maplist(P, Xs)`, `maplist(P, Xs, Ys)`, `maplist(P, Xs, Ys, Zs)`: applies
+/// `P` elementwise (via `call/N`), cf. Scryer's `lists.pl`.
+fn maplist_clauses() -> Array[Clause] {
+  let p = variable("P")
+  let x = variable("X")
+  let xs = variable("Xs")
+  let y = variable("Y")
+  let ys = variable("Ys")
+  let z = variable("Z")
+  let zs = variable("Zs")
+  [
+    Clause::fact(compound("maplist", [p, empty_list()])),
+    Clause(
+      compound("maplist", [p, cons(x, xs)]),
+      compound("call", [p, x]).and_(compound("maplist", [p, xs])),
+    ),
+    Clause::fact(compound("maplist", [p, empty_list(), empty_list()])),
+    Clause(
+      compound("maplist", [p, cons(x, xs), cons(y, ys)]),
+      compound("call", [p, x, y]).and_(compound("maplist", [p, xs, ys])),
+    ),
+    Clause::fact(
+      compound("maplist", [p, empty_list(), empty_list(), empty_list()]),
+    ),
+    Clause(
+      compound("maplist", [p, cons(x, xs), cons(y, ys), cons(z, zs)]),
+      compound("call", [p, x, y, z]).and_(compound("maplist", [p, xs, ys, zs])),
+    ),
+  ]
+}
+
+///|
+/// `foldl(G, [X | Xs], A0, A) :- call(G, X, A0, A1), foldl(G, Xs, A1, A).`
+fn foldl_clauses() -> Array[Clause] {
+  let g = variable("G")
+  let a = variable("A")
+  let x = variable("X")
+  let xs = variable("Xs")
+  let a0 = variable("A0")
+  let a1 = variable("A1")
+  [
+    Clause::fact(compound("foldl", [g, empty_list(), a, a])),
+    Clause(
+      compound("foldl", [g, cons(x, xs), a0, a]),
+      compound("call", [g, x, a0, a1]).and_(compound("foldl", [g, xs, a1, a])),
+    ),
+  ]
+}
+
+///|
+/// `memberchk(X, Xs) :- member(X, Xs), !.` — one solution only.
+fn memberchk_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let xs = variable("Xs")
+  [
+    Clause(
+      compound("memberchk", [x, xs]),
+      compound("member", [x, xs]).and_(atom("!")),
+    ),
+  ]
+}
+
+///|
+/// `selectchk(X, Xs, Ys) :- select(X, Xs, Ys), !.` — one solution only.
+fn selectchk_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let xs = variable("Xs")
+  let ys = variable("Ys")
+  [
+    Clause(
+      compound("selectchk", [x, xs, ys]),
+      compound("select", [x, xs, ys]).and_(atom("!")),
+    ),
+  ]
+}
+
+///|
+/// `succ(I, S)`: `S` is the successor of the non-negative integer `I`
+/// (relational, at least one argument must be instantiated), cf. Scryer's
+/// `iso_ext.pl`.
+fn succ_clauses() -> Array[Clause] {
+  let i = variable("I")
+  let s = variable("S")
+  [
+    // succ(I, S) :- integer(S), !, S > 0, I is S - 1.
+    Clause(
+      compound("succ", [i, s]),
+      compound("integer", [s])
+      .and_(atom("!"))
+      .and_(Compound(">", [s, int(0)]))
+      .and_(i.is_(Compound("-", [s, int(1)]))),
+    ),
+    // succ(I, S) :- integer(I), !, S is I + 1.
+    Clause(
+      compound("succ", [i, s]),
+      compound("integer", [i])
+      .and_(atom("!"))
+      .and_(s.is_(Compound("+", [i, int(1)]))),
+    ),
+  ]
+}
+
+///|
+/// `plus(A, B, C)`: relational integer addition — with two arguments
+/// instantiated, the third is computed.
+fn plus_clauses() -> Array[Clause] {
+  let a = variable("A")
+  let b = variable("B")
+  let c = variable("C")
+  [
+    Clause(
+      compound("plus", [a, b, c]),
+      compound("integer", [a])
+      .and_(compound("integer", [b]))
+      .and_(atom("!"))
+      .and_(c.is_(Compound("+", [a, b]))),
+    ),
+    Clause(
+      compound("plus", [a, b, c]),
+      compound("integer", [a])
+      .and_(compound("integer", [c]))
+      .and_(atom("!"))
+      .and_(b.is_(Compound("-", [c, a]))),
+    ),
+    Clause(
+      compound("plus", [a, b, c]),
+      compound("integer", [b])
+      .and_(compound("integer", [c]))
+      .and_(atom("!"))
+      .and_(a.is_(Compound("-", [c, b]))),
+    ),
+  ]
+}
+
+///|
+/// `numlist(L, U, Ns)`: `Ns` is the list `[L, ..., U]` (both bounds must be
+/// instantiated).
+fn numlist_clauses() -> Array[Clause] {
+  let l = variable("L")
+  let u = variable("U")
+  let ns = variable("Ns")
+  let l2 = variable("L2")
+  let u2 = variable("U2")
+  let ns2 = variable("Ns2")
+  let l1 = variable("L1")
+  [
+    Clause(
+      compound("numlist", [l, u, ns]),
+      compound("integer", [l])
+      .and_(compound("integer", [u]))
+      .and_(Compound("=<", [l, u]))
+      .and_(compound("numlist_", [l, u, ns])),
+    ),
+    Clause::fact(compound("numlist_", [u, u, cons(u, empty_list())])),
+    Clause(
+      compound("numlist_", [l2, u2, cons(l2, ns2)]),
+      Compound("<", [l2, u2])
+      .and_(l1.is_(Compound("+", [l2, int(1)])))
+      .and_(compound("numlist_", [l1, u2, ns2])),
+    ),
+  ]
+}
+
+///|
+/// `prefix(Pre, Xs) :- append(Pre, _, Xs).` and
+/// `suffix(Suf, Xs) :- append(_, Suf, Xs).`
+fn prefix_suffix_clauses() -> Array[Clause] {
+  let pre = variable("Pre")
+  let xs = variable("Xs")
+  let suf = variable("Suf")
+  let ys = variable("Ys")
+  [
+    Clause(
+      compound("prefix", [pre, xs]),
+      compound("append", [pre, variable("_"), xs]),
+    ),
+    Clause(
+      compound("suffix", [suf, ys]),
+      compound("append", [variable("_"), suf, ys]),
+    ),
+  ]
+}
+
+///|
+/// `same_length([], []).` and
+/// `same_length([_ | Xs], [_ | Ys]) :- same_length(Xs, Ys).`
+fn same_length_clauses() -> Array[Clause] {
+  let xs = variable("Xs")
+  let ys = variable("Ys")
+  [
+    Clause::fact(compound("same_length", [empty_list(), empty_list()])),
+    Clause(
+      compound("same_length", [cons(variable("_"), xs), cons(variable("_"), ys)]),
+      compound("same_length", [xs, ys]),
     ),
   ]
 }

@@ -1,4 +1,5 @@
 import {
   "moonbitlang/core/immut/hashmap" @immut_hashmap,
+  "moonbitlang/core/math",
   "moonbitlang/core/string",
 }

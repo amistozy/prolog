@@ -55,4 +55,21 @@ fn main raise {
   for ans in lib.solve([parse_term("sort([3, 1, 2, 1], S)")]) {
     println(ans)
   }
+
+  println("== DCG ==")
+  let grammar_src =
+    #|digits([D]) --> [D].
+    #|digits([D | Ds]) --> [D], digits(Ds).
+    #|
+  let grammar = parse_program(grammar_src)
+  for ans in grammar.solve([parse_term("phrase(digits(Ds), [1, 2, 3])")]) {
+    println(ans)
+  }
+
+  println("== dif ==")
+  for ans in lib.solve([parse_term("(dif(X, b), X = a)")]) {
+    println(ans)
+  }
+  let none = lib.solve([parse_term("(dif(X, b), X = b)")]).to_array()
+  println("dif(X, b), X = b has \{none.length()} solution(s)")
 }

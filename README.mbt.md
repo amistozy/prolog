@@ -163,9 +163,11 @@ test {
   `/* */` comments)
 
 Supported syntax: variables, atoms (incl. quoted `'...'`), integers, floats
-(including `1.5e-2`), strings, lists with tails (`[a, b | T]`), compound
-terms, and the usual ISO operators with their precedences (`:-`, `;`, `,`,
-`->`, `=`, `is`, `=..`, `+ - * / // div mod`, `@< ...`, unary `-` and `\+`).
+(including `1.5e-2`), base literals (`0x1F`, `0o17`, `0b101`), char codes
+(`0'a`, `0'\n`), strings, lists with tails (`[a, b | T]`), compound terms,
+`{G}` (DCG goals), DCG rules (`head --> body`), and the usual ISO operators
+with their precedences (`:-`, `;`, `,`, `->`, `=`, `is`, `=..`,
+`+ - * / // div mod`, `@< ...`, unary `-` and `\+`).
 
 ## Builtins and standard library
 
@@ -173,16 +175,24 @@ Builtin predicates (they take precedence over clauses with the same name):
 
 - control: `true`, `fail`, `!` (cut), `,`/`;`/`->` (if-then-else) are
   handled structurally; `(A -> B ; C)` commits to `B` once `A` succeeds
+- constraints: `dif/2` (delayed disequality, cf. Scryer's `library(dif)`)
 - unification: `=`, `\=`, `==`, `\==`
 - arithmetic: `is`, `<`, `>`, `=<`/`<=`, `>=`, `=:=`, `=\=`;
-  functors `+ - * / // div mod abs max min` (with ISO semantics: `/` is
-  float division, `//` truncates, `div`/`mod` floor)
-- meta: `not/1` and `\+` (with a cut-local scope), `call/1`, `once/1`,
-  `repeat/0`, `forall/2`, `findall/3`
+  functors `+ - * / // div mod ^ abs max min sqrt` (with ISO semantics:
+  `/` is float division, `//` truncates, `div`/`mod` floor)
+- meta: `not/1` and `\+` (with a cut-local scope), `call/1..8`,
+  `ignore/1`, `once/1`, `repeat/0`, `forall/2`, `findall/3`,
+  `bagof/3`, `setof/3` (with `^` existential quantification),
+  `copy_term/2`, `term_variables/2`
 - term inspection: `functor/3`, `arg/3`, `=../2`, `ground/1`
 - term ordering (standard order, cf. Scryer's `TermOrderCategory`):
   `compare/3`, `sort/2`, `msort/2`, `@<`, `@>`, `@=<`, `@>=`
-- atoms: `atom_length/2`, `atom_concat/3` (enumerates splits)
+- atoms: `atom_length/2`, `atom_concat/3` (enumerates splits),
+  `atom_codes/2`, `atom_chars/2`, `sub_atom/5`
+- numbers: `number_codes/2`, `number_chars/2`, `atom_number/2`,
+  `char_code/2`
+- DCG: `phrase/2`, `phrase/3` (grammar rules are expanded at parse time,
+  see below)
 - type tests: `var`, `nonvar`, `atom`, `integer`, `float`, `number`,
   `atomic`, `string`, `compound`, `list`
 - output: `write(X)`, `writeln(X)` (simplified to `println`)
@@ -207,6 +217,49 @@ test {
 `nth0/3`, `nth1/3`, `last/2`, `sum_list/2`, `max_list/2`, `min_list/2`,
 `select/3`, `flatten/2`, `permutation/2` are available in any argument
 direction, e.g. `append(A, B, [1, 2])` enumerates all splits.
+Also included: `maplist/2..4`, `foldl/4` (via `call/N`), `memberchk/2`,
+`selectchk/3`, `succ/2`, `plus/3`, `numlist/3`, `prefix/2`, `suffix/2`,
+`same_length/2`.
+
+## Definite clause grammars (DCGs)
+
+Grammar rules are expanded into ordinary clauses at parse time, following
+Scryer's `library(dcgs)`: `Head --> Body` becomes
+`Head(S0, S) :- Body'(S0, S)`, with `[a, b]` terminals, `(A, B)`
+sequencing, `(A ; B)` alternatives, `{G}` plain goals, `!` cuts, `call(G)`
+and `phrase(...)` handled as in Scryer. Run a grammar with `phrase/2` or
+`phrase/3`:
+
+```mbt check
+///|
+test {
+  let src =
+    #|as --> [].
+    #|as --> [a], as.
+    #|
+  let p = parse_program(src)
+  let l = variable("L")
+  let answers = p
+    .solve([compound("phrase", [atom("as"), l])])
+    .take(3)
+    .to_array()
+  assert_eq(answers[0].to_string(), "L = []")
+  assert_eq(answers[1].to_string(), "L = [a]")
+  assert_eq(answers[2].to_string(), "L = [a, a]")
+}
+```
+
+The same expansion is available programmatically: [`dcg_rule`] builds a
+clause from a grammar rule, [`Term::dcg_body`] expands a grammar body
+against two list arguments.
+
+## `dif/2` disequality constraints
+
+`dif(X, Y)` succeeds when `X` and `Y` can be shown to be different and fails
+when they are identical; when the terms are not yet comparable the
+constraint is delayed and re-checked after every binding, so `X = b` fails
+after `dif(X, b)`. Constraints are undone on backtracking, and `\=/2`
+keeps its ISO "not unifiable" meaning.
 
 ## Laziness
 
@@ -235,8 +288,11 @@ test {
   sharing a substitution across branches is always safe.
 - Unification performs the occur check and treats numbers numerically
   (`1 = 1.0` succeeds).
+- `dif/2` constraints are re-checked after every binding; they are
+  snapshotted and undone together with the choice points.
 - Undefined predicates simply fail (no error), like many small Prologs.
 - `solve_all` on a program with infinitely many answers will not terminate;
   use `solve` with `take`/`next` instead.
 - Terms with unknown arity/name render plainly; atoms with special characters
-  are not quoted.
+  are not quoted; integral floats render with a trailing `.0` so they
+  round-trip as floats.

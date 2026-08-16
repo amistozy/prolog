@@ -253,13 +253,30 @@ pub impl Eq for Term with fn equal(a, b) {
 pub impl Show for Term with fn to_string(self) {
   match self {
     Int(i) => i.to_string()
-    Float(d) => d.to_string()
+    Float(d) => render_float(d)
     Atom(name) => name
     Str(s) => "\"\{s}\""
     Var(v) => if v.name == "" { "_\{v.id}" } else { v.name }
     List(xs) => render_chain(list_tail(xs, Atom("[]")))
     Compound(".", [head, tail]) => render_chain(cons(head, tail))
     Compound(name, args) => render_compound(name, args)
+  }
+}
+
+///|
+/// Renders a float in Prolog syntax. MoonBit's `to_string` drops the
+/// decimal point of integral doubles (`4.0` becomes `"4"`), which would
+/// round-trip as an *integer*; append `.0` so `4.0` stays a float.
+fn render_float(d : Double) -> String {
+  let s = d.to_string()
+  if s.contains(".") ||
+    s.contains("e") ||
+    s.contains("E") ||
+    s.contains("n") ||
+    s.contains("i") {
+    s
+  } else {
+    s + ".0"
   }
 }
 
@@ -298,6 +315,8 @@ fn render_compound(name : String, args : Array[Term]) -> String {
     "\{args[0]}, \{args[1]}"
   } else if name == ";" && args.length() == 2 {
     "(\{args[0]}; \{args[1]})"
+  } else if name == "{}" && args.length() == 1 {
+    "{ \{args[0]} }"
   } else if args.length() == 2 &&
     (
       name == "+" ||
@@ -306,7 +325,9 @@ fn render_compound(name : String, args : Array[Term]) -> String {
       name == "/" ||
       name == "//" ||
       name == "div" ||
-      name == "mod"
+      name == "mod" ||
+      name == "^" ||
+      name == "-->"
     ) {
     "(\{args[0]} \{name} \{args[1]})"
   } else if args.length() == 2 &&
