@@ -3,6 +3,7 @@ package "amistozy/prolog"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/immut/hashmap",
 }
 
 // Values
@@ -49,7 +50,7 @@ type Alt derive(@debug.Debug)
 pub struct Answer {
   bindings : Map[String, Term]
 } derive(@debug.Debug)
-pub fn Answer::from_subst(Map[Int, Term], Array[Term]) -> Self
+pub fn Answer::from_subst(@hashmap.HashMap[Int, Term], Array[Term]) -> Self
 pub impl Show for Answer
 
 type Choice derive(@debug.Debug)
@@ -77,7 +78,7 @@ pub fn Program::add(Self, Clause) -> Unit raise PrologError
 pub fn Program::solve(Self, Array[Term]) -> Iter[Answer]
 pub fn Program::solve_all(Self, Array[Term]) -> Array[Answer]
 pub fn Program::solve_first(Self, Array[Term]) -> Answer?
-pub fn Program::solve_subst(Self, Array[Term]) -> Iter[Map[Int, Term]]
+pub fn Program::solve_subst(Self, Array[Term]) -> Iter[@hashmap.HashMap[Int, Term]]
 pub fn Program::stdlib() -> Self
 
 pub(all) enum Term {
@@ -92,7 +93,7 @@ pub(all) enum Term {
 pub fn Term::Term(String) -> Self raise ParseError
 pub fn Term::and_(Self, Self) -> Self
 pub fn Term::compare_terms(Self, Self) -> Int
-pub fn Term::deref(Self, Map[Int, Self]) -> Self
+pub fn Term::deref(Self, @hashmap.HashMap[Int, Self]) -> Self
 pub fn Term::eq(Self, Self) -> Self
 pub fn Term::head_key(Self) -> (String, Int)?
 pub fn Term::identical(Self, Self) -> Self
@@ -101,8 +102,8 @@ pub fn Term::neq(Self, Self) -> Self
 pub fn Term::not_(Self) -> Self
 pub fn Term::not_identical(Self, Self) -> Self
 pub fn Term::or_(Self, Self) -> Self
-pub fn Term::resolve(Self, Map[Int, Self]) -> Self
-pub fn Term::unify(Self, Self, Map[Int, Self]) -> Map[Int, Self]?
+pub fn Term::resolve(Self, @hashmap.HashMap[Int, Self]) -> Self
+pub fn Term::unify(Self, Self, @hashmap.HashMap[Int, Self]) -> @hashmap.HashMap[Int, Self]?
 pub impl FromLiteral for Term
 pub impl Add for Term
 pub impl BitAnd for Term
@@ -125,7 +126,7 @@ pub(all) struct VarRef {
 } derive(@debug.Debug)
 
 // Type aliases
-pub type Subst = Map[Int, Term]
+pub type Subst = @hashmap.HashMap[Int, Term]
 
 // Traits
 pub trait FromLiteral {

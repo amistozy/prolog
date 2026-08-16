@@ -6,33 +6,39 @@ test "unify: variables, occurs check, chains" {
   // var-var binds one to the other
   let x = variable("X")
   let y = variable("Y")
-  let s = match x.unify(y, Map([])) {
+  let s = match x.unify(y, @immut_hashmap.HashMap([])) {
     Some(s) => s
     None => abort("x = y should unify")
   }
   assert_true(x.deref(s) is Var(_))
   // occurs check rejects f(X) = X
   let z = variable("Z")
-  let cyclic = compound("f", [z]).unify(z, Map([]))
+  let cyclic = compound("f", [z]).unify(z, @immut_hashmap.HashMap([]))
   assert_true(cyclic is None)
   // proper list unifies with a cons chain
   let t = variable("T")
   let s2 = match
-    list([int(1), int(2)]).unify(cons(int(1), cons(int(2), t)), Map([])) {
+    list([int(1), int(2)]).unify(
+      cons(int(1), cons(int(2), t)),
+      @immut_hashmap.HashMap([]),
+    ) {
     Some(s2) => s2
     None => abort("list vs chain should unify")
   }
   assert_eq(t.deref(s2).to_string(), "[]")
   // mismatched lengths fail
-  let s3 = list([int(1), int(2)]).unify(list([int(1)]), Map([]))
+  let s3 = list([int(1), int(2)]).unify(
+    list([int(1)]),
+    @immut_hashmap.HashMap([]),
+  )
   assert_true(s3 is None)
   // numeric equality: 1 = 1.0
-  let s4 = int(1).unify(float(1.0), Map([]))
+  let s4 = int(1).unify(float(1.0), @immut_hashmap.HashMap([]))
   assert_true(s4 is Some(_))
   // deep structure
   let s5 = compound("f", [compound("g", [x]), int(2)]).unify(
     compound("f", [compound("g", [atom("a")]), int(2)]),
-    Map([]),
+    @immut_hashmap.HashMap([]),
   )
   assert_eq(
     match s5 {
@@ -47,14 +53,19 @@ test "unify: variables, occurs check, chains" {
 test "unify: List tail unification" {
   // [1 | T] = [1, 2, 3] binds T to [2, 3]
   let t = variable("T")
-  let s = match cons(int(1), t).unify(list([int(1), int(2), int(3)]), Map([])) {
+  let s = match
+    cons(int(1), t).unify(
+      list([int(1), int(2), int(3)]),
+      @immut_hashmap.HashMap([]),
+    ) {
     Some(s) => s
     None => abort("should unify")
   }
   assert_eq(t.deref(s).to_string(), "[2, 3]")
   // [1, 2] = [1 | T] binds T to [2]
   let t2 = variable("T")
-  let s2 = match list([int(1), int(2)]).unify(cons(int(1), t2), Map([])) {
+  let s2 = match
+    list([int(1), int(2)]).unify(cons(int(1), t2), @immut_hashmap.HashMap([])) {
     Some(s2) => s2
     None => abort("should unify")
   }
@@ -62,7 +73,11 @@ test "unify: List tail unification" {
   // 3-element list vs 1-element chain binds head and tail
   let t3 = variable("T")
   let x3 = variable("X")
-  let s3 = match list([int(1), int(2), int(3)]).unify(cons(x3, t3), Map([])) {
+  let s3 = match
+    list([int(1), int(2), int(3)]).unify(
+      cons(x3, t3),
+      @immut_hashmap.HashMap([]),
+    ) {
     Some(s3) => s3
     None => abort("should unify")
   }
@@ -104,17 +119,21 @@ test "eval_arith" {
     match
       eval_arith(
         compound("+", [int(1), compound("*", [int(2), int(3)])]),
-        Map([]),
+        @immut_hashmap.HashMap([]),
       ) {
       Some(v) => v.to_string()
       None => abort("expected a value")
     },
     "7",
   )
-  assert_true(eval_arith(compound("/", [int(1), int(0)]), Map([])) is None)
-  assert_true(eval_arith(variable("X"), Map([])) is None)
+  assert_true(
+    eval_arith(compound("/", [int(1), int(0)]), @immut_hashmap.HashMap([]))
+    is None,
+  )
+  assert_true(eval_arith(variable("X"), @immut_hashmap.HashMap([])) is None)
   assert_eq(
-    match eval_arith(compound("mod", [int(-7), int(2)]), Map([])) {
+    match
+      eval_arith(compound("mod", [int(-7), int(2)]), @immut_hashmap.HashMap([])) {
       Some(v) => v.to_string()
       None => abort("expected a value")
     },

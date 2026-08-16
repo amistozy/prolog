@@ -47,7 +47,13 @@ struct Machine {
 
 ///|
 fn Machine::new(prog : Program) -> Machine {
-  { prog, stack: FNil, subst: Map([]), choices: [], resumed: false }
+  {
+    prog,
+    stack: FNil,
+    subst: @immut_hashmap.HashMap([]),
+    choices: [],
+    resumed: false,
+  }
 }
 
 ///|
@@ -289,12 +295,7 @@ pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] 
   for i = goals.length() - 1; i >= 0; i = i - 1 {
     m.push_goal(goals[i], 0)
   }
-  Iter::new(() => {
-    match m.step(FNil, -1) {
-      Some(s) => Some(s.copy())
-      None => None
-    }
-  })
+  Iter::new(() => m.step(FNil, -1))
 }
 
 ///|

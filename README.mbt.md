@@ -229,6 +229,10 @@ test {
 
 ## Semantics notes
 
+- `Subst` (the substitution passed to `unify`/`deref`/`resolve`) is a
+  persistent, immutable hash map (`moonbitlang/core/immut/hashmap`): binding
+  a variable returns a new substitution and never mutates the old one, so
+  sharing a substitution across branches is always safe.
 - Unification performs the occur check and treats numbers numerically
   (`1 = 1.0` succeeds).
 - Undefined predicates simply fail (no error), like many small Prologs.

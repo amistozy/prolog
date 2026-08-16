@@ -1,10 +1,11 @@
 ///|
 /// A substitution maps variable ids to terms.
 ///
-/// Unification never mutates an existing map in place: every binding step
-/// produces a *new* map, so a substitution value can be shared safely across
-/// branches (this is what makes backtracking and `not/1` easy to implement).
-pub type Subst = Map[Int, Term]
+/// `Subst` is backed by a persistent (immutable) hash map
+/// (`moonbitlang/core/immut/hashmap`): every binding step produces a *new*
+/// map that shares structure with the old one, so a substitution value can
+/// be shared safely across branches and backtracking snapshots are free.
+pub type Subst = @immut_hashmap.HashMap[Int, Term]
 
 ///|
 /// Follows the binding chain of `self`, returning the current value of the
@@ -14,7 +15,7 @@ pub type Subst = Map[Int, Term]
 /// test {
 ///   let x = variable("X")
 ///   let y = variable("Y")
-///   let s : Subst = Map([])
+///   let s : Subst = @immut_hashmap.HashMap([])
 ///   let s2 = match x.unify(y, s) {
 ///     Some(s2) => s2
 ///     None => abort("unify failed")
@@ -64,7 +65,7 @@ pub fn Term::resolve(self : Term, s : Subst) -> Term {
 /// ```mbt check
 /// test {
 ///   let x = variable("X")
-///   let s = x.unify(atom("a"), Map([]))
+///   let s = x.unify(atom("a"), @immut_hashmap.HashMap([]))
 ///   assert_true(s is Some(_))
 /// }
 /// ```
@@ -166,13 +167,12 @@ fn is_empty_list(t : Term) -> Bool {
 
 ///|
 /// Binds `id` to `t`, rejecting cyclic bindings via the occur check.
+/// Returns a new substitution (the old one is left untouched).
 fn bind(s : Subst, id : Int, t : Term) -> Subst? {
   if occurs(id, t, s) {
     None
   } else {
-    let s2 = s.copy()
-    s2[id] = t
-    Some(s2)
+    Some(s.add(id, t))
   }
 }
 
