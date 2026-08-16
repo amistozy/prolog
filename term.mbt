@@ -35,7 +35,7 @@ pub(all) struct VarRef {
 /// Lists are also represented as cons cells `'.'(H, T)` (built by
 /// [`cons`] or [`list_tail`]), so `list([1, 2, 3])` and
 /// `cons(1, cons(2, cons(3, empty_list())))` unify with each other.
-pub enum Term {
+pub(all) enum Term {
   Int(Int)
   Float(Double)
   Atom(String)

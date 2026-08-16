@@ -74,7 +74,7 @@ pub fn Program::solve_first(Self, Array[Term]) -> Answer?
 pub fn Program::solve_subst(Self, Array[Term]) -> Iter[@hashmap.HashMap[Int, Term]]
 pub fn Program::stdlib() -> Self
 
-pub enum Term {
+pub(all) enum Term {
   Int(Int)
   Float(Double)
   Atom(String)
