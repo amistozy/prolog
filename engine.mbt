@@ -348,7 +348,7 @@ pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] 
 /// `order` records the names in order of first appearance in the query, so
 /// answers render deterministically as `X = john, Y = mary` regardless of
 /// hash-map iteration order.
-struct Answer {
+pub struct Answer {
   bindings : Map[String, Term]
   order : Array[String]
 } derive(Debug)

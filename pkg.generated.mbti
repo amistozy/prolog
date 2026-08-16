@@ -48,7 +48,10 @@ pub(all) suberror PrologError {
 } derive(@debug.Debug)
 
 // Types and methods
-type Answer derive(@debug.Debug)
+pub struct Answer {
+  bindings : Map[String, Term]
+  order : Array[String]
+} derive(@debug.Debug)
 pub fn Answer::from_subst(@hashmap.HashMap[Int, Term], Array[Term]) -> Self
 pub fn Answer::get(Self, String) -> Term?
 pub impl Show for Answer
