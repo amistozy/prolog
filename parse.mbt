@@ -27,9 +27,9 @@
 /// }
 /// ```
 pub fn parse_term(text : String) -> Term raise ParseError {
-  let p = Parser::new(tokenize(text))
-  let t = parse_expr(p, 1200)
-  expect_eof(p)
+  let p = new_parser(tokenize(text))
+  let t = p.parse_expr(1200)
+  p.expect_eof()
   t
 }
 
@@ -46,13 +46,13 @@ pub fn parse_term(text : String) -> Term raise ParseError {
 /// }
 /// ```
 pub fn parse_clause(text : String) -> Clause raise ParseError {
-  let p = Parser::new(tokenize(text))
-  let t = parse_expr(p, 1200)
+  let p = new_parser(tokenize(text))
+  let t = p.parse_expr(1200)
   match p.peek() {
     TkPeriod => p.advance()
     _ => ()
   }
-  expect_eof(p)
+  p.expect_eof()
   parse_clause_term(t)
 }
 
@@ -81,7 +81,7 @@ fn parse_clause_term(t : Term) -> Clause {
 /// }
 /// ```
 pub fn parse_program(text : String) -> Program raise ParseError {
-  let p = Parser::new(tokenize(text))
+  let p = new_parser(tokenize(text))
   let clauses : Array[Clause] = []
   for ;; {
     // skip stray periods
@@ -93,7 +93,7 @@ pub fn parse_program(text : String) -> Program raise ParseError {
     }
     // Each clause has its own variable scope.
     p.vars = Map([])
-    let t = parse_expr(p, 1200)
+    let t = p.parse_expr(1200)
     match p.peek() {
       TkPeriod => p.advance()
       _ => ()
@@ -147,7 +147,12 @@ struct Parser {
 } derive(Debug)
 
 ///|
-fn Parser::new(toks : Array[TokItem]) -> Parser {
+/// A fresh parser over the given token stream, positioned at the start with
+/// no named variables.
+///
+/// A custom free function (instead of `Parser::new`) so that the
+/// auto-generated `Parser(...)` constructor stays available.
+fn new_parser(toks : Array[TokItem]) -> Parser {
   { toks, pos: 0, vars: Map([]) }
 }
 
@@ -575,19 +580,19 @@ fn prefix_op(s : String) -> Int? {
 ///
 /// Letter operators (`is`, `div`, `mod`, ...) are tokenized as atoms, so
 /// `TkAtom` names are checked against the operator table too.
-fn parse_expr(p : Parser, max_prec : Int) -> Term raise ParseError {
-  let mut t = parse_prefix(p)
+fn Parser::parse_expr(self : Parser, max_prec : Int) -> Term raise ParseError {
+  let mut t = self.parse_prefix()
   for ;; {
-    let op = match p.peek() {
+    let op = match self.peek() {
       TkSym(s) => s
       TkAtom(s) if infix_op(s) is Some(_) => s
       _ => break
     }
     match infix_op(op) {
       Some((prec, assoc)) if prec <= max_prec => {
-        p.advance()
+        self.advance()
         let rhs_max = if assoc == "xfy" { prec } else { prec - 1 }
-        let rhs = parse_expr(p, rhs_max)
+        let rhs = self.parse_expr(rhs_max)
         t = Compound(op, [t, rhs])
       }
       _ => break
@@ -597,56 +602,60 @@ fn parse_expr(p : Parser, max_prec : Int) -> Term raise ParseError {
 }
 
 ///|
-fn parse_prefix(p : Parser) -> Term raise ParseError {
-  match p.peek() {
+/// Parses a prefix operator application (e.g. `-x`, `\+ G`) or a primary.
+fn Parser::parse_prefix(self : Parser) -> Term raise ParseError {
+  match self.peek() {
     TkSym(op) =>
       match prefix_op(op) {
         Some(prec) => {
-          p.advance()
-          Compound(op, [parse_expr(p, prec - 1)])
+          self.advance()
+          Compound(op, [self.parse_expr(prec - 1)])
         }
-        _ => parse_primary(p)
+        _ => self.parse_primary()
       }
-    _ => parse_primary(p)
+    _ => self.parse_primary()
   }
 }
 
 ///|
-fn unexpected(p : Parser) -> ParseError {
-  match p.peek() {
+/// The error to report for the token at the current position.
+fn Parser::unexpected(self : Parser) -> ParseError {
+  match self.peek() {
     TkEof => ParseError::UnexpectedEof(pos=0)
-    _ => ParseError::UnexpectedChar(pos=p.toks[p.pos].pos, ch='?')
+    _ => ParseError::UnexpectedChar(pos=self.toks[self.pos].pos, ch='?')
   }
 }
 
 ///|
-fn parse_primary(p : Parser) -> Term raise ParseError {
-  match p.peek() {
+/// Parses a primary expression: a variable, atom, number, string, `!`,
+/// a parenthesized term, `{...}` or a list.
+fn Parser::parse_primary(self : Parser) -> Term raise ParseError {
+  match self.peek() {
     TkVar(name) => {
-      p.advance()
+      self.advance()
       // `_` is a fresh anonymous variable; other names share one variable
       // per term (see `Parser.vars`).
       if name == "_" {
         variable("_")
       } else {
-        match p.vars.get(name) {
+        match self.vars.get(name) {
           Some(t) => t
           None => {
             let v = variable(name)
-            p.vars[name] = v
+            self.vars[name] = v
             v
           }
         }
       }
     }
     TkAtom(name) => {
-      p.advance()
-      if p.peek() is TkLParen {
-        p.advance()
-        let args = parse_args(p)
-        match p.peek() {
-          TkRParen => p.advance()
-          _ => raise unexpected(p)
+      self.advance()
+      if self.peek() is TkLParen {
+        self.advance()
+        let args = self.parse_args()
+        match self.peek() {
+          TkRParen => self.advance()
+          _ => raise self.unexpected()
         }
         Compound(name, args)
       } else {
@@ -654,61 +663,61 @@ fn parse_primary(p : Parser) -> Term raise ParseError {
       }
     }
     TkInt(i) => {
-      p.advance()
+      self.advance()
       Int(i)
     }
     TkFloat(d) => {
-      p.advance()
+      self.advance()
       Float(d)
     }
     TkStr(s) => {
-      p.advance()
+      self.advance()
       str(s)
     }
     TkSym("!") => {
-      p.advance()
+      self.advance()
       atom("!")
     }
     TkLParen => {
-      p.advance()
-      let t = parse_expr(p, 1200)
-      match p.peek() {
+      self.advance()
+      let t = self.parse_expr(1200)
+      match self.peek() {
         TkRParen => {
-          p.advance()
+          self.advance()
           t
         }
-        _ => raise unexpected(p)
+        _ => raise self.unexpected()
       }
     }
-    TkLBracket => parse_list(p)
+    TkLBracket => self.parse_list()
     TkLBrace => {
       // `{G}`: a plain goal inside a DCG body (functor `{}`).
-      p.advance()
-      let t = parse_expr(p, 1200)
-      match p.peek() {
+      self.advance()
+      let t = self.parse_expr(1200)
+      match self.peek() {
         TkRBrace => {
-          p.advance()
+          self.advance()
           Compound("{}", [t])
         }
-        _ => raise unexpected(p)
+        _ => raise self.unexpected()
       }
     }
     TkEof => raise ParseError::UnexpectedEof(pos=0)
-    _ => raise unexpected(p)
+    _ => raise self.unexpected()
   }
 }
 
 ///|
 /// Parses the comma-separated arguments of a compound term or a list
 /// (`,` with precedence 1000 separates, so arguments parse at 999).
-fn parse_args(p : Parser) -> Array[Term] raise ParseError {
+fn Parser::parse_args(self : Parser) -> Array[Term] raise ParseError {
   let args : Array[Term] = []
-  args.push(parse_expr(p, 999))
+  args.push(self.parse_expr(999))
   for ;; {
-    match p.peek() {
+    match self.peek() {
       TkSym(",") => {
-        p.advance()
-        args.push(parse_expr(p, 999))
+        self.advance()
+        args.push(self.parse_expr(999))
       }
       _ => break
     }
@@ -717,40 +726,42 @@ fn parse_args(p : Parser) -> Array[Term] raise ParseError {
 }
 
 ///|
-fn parse_list(p : Parser) -> Term raise ParseError {
-  p.advance() // consume `[`
-  if p.peek() is TkRBracket {
-    p.advance()
+/// Parses `[e1, ..., en]` or `[e1, ..., en | Tail]`.
+fn Parser::parse_list(self : Parser) -> Term raise ParseError {
+  self.advance() // consume `[`
+  if self.peek() is TkRBracket {
+    self.advance()
     return empty_list()
   }
   let elems : Array[Term] = []
   for ;; {
-    elems.push(parse_expr(p, 999))
-    match p.peek() {
-      TkSym(",") => p.advance()
+    elems.push(self.parse_expr(999))
+    match self.peek() {
+      TkSym(",") => self.advance()
       TkPipe => {
-        p.advance()
-        let tail = parse_expr(p, 999)
-        match p.peek() {
-          TkRBracket => p.advance()
-          _ => raise unexpected(p)
+        self.advance()
+        let tail = self.parse_expr(999)
+        match self.peek() {
+          TkRBracket => self.advance()
+          _ => raise self.unexpected()
         }
         return list_tail(elems, tail)
       }
       TkRBracket => {
-        p.advance()
+        self.advance()
         return list(elems)
       }
       TkEof => raise ParseError::UnexpectedEof(pos=0)
-      _ => raise unexpected(p)
+      _ => raise self.unexpected()
     }
   }
 }
 
 ///|
-fn expect_eof(p : Parser) -> Unit raise ParseError {
-  match p.peek() {
+/// Fails when the parser has not consumed all input.
+fn Parser::expect_eof(self : Parser) -> Unit raise ParseError {
+  match self.peek() {
     TkEof => ()
-    _ => raise unexpected(p)
+    _ => raise self.unexpected()
   }
 }
