@@ -54,12 +54,12 @@ struct Machine {
 } derive(Debug)
 
 ///|
-/// A fresh machine for the given program, with an empty goal stack,
+/// Builds a fresh machine for the given program, with an empty goal stack,
 /// substitution, constraint store and no choice points.
 ///
-/// A custom free function (instead of `Machine::new`) so that the
-/// auto-generated `Machine(...)` constructor stays available.
-fn new_machine(prog : Program) -> Machine {
+/// Declared as the custom constructor `Machine(...)`, like
+/// [`Clause::Clause`](index.html#clause).
+fn Machine::Machine(prog : Program) -> Machine {
   {
     prog,
     stack: FNil,
@@ -332,7 +332,7 @@ fn Machine::not_(self : Machine, g : Term) -> Bool {
 /// All solutions of the query (a conjunction of goals) as a lazy iterator of
 /// raw substitutions.
 pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] {
-  let m = new_machine(self)
+  let m = Machine(self)
   // Push in reverse: the goal stack pops the last pushed frame first, so
   // goals are executed in their given order.
   for i = goals.length() - 1; i >= 0; i = i - 1 {

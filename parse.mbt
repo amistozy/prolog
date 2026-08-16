@@ -27,7 +27,7 @@
 /// }
 /// ```
 pub fn parse_term(text : String) -> Term raise ParseError {
-  let p = new_parser(tokenize(text))
+  let p = Parser(tokenize(text))
   let t = p.parse_expr(1200)
   p.expect_eof()
   t
@@ -46,7 +46,7 @@ pub fn parse_term(text : String) -> Term raise ParseError {
 /// }
 /// ```
 pub fn parse_clause(text : String) -> Clause raise ParseError {
-  let p = new_parser(tokenize(text))
+  let p = Parser(tokenize(text))
   let t = p.parse_expr(1200)
   match p.peek() {
     TkPeriod => p.advance()
@@ -81,7 +81,7 @@ fn parse_clause_term(t : Term) -> Clause {
 /// }
 /// ```
 pub fn parse_program(text : String) -> Program raise ParseError {
-  let p = new_parser(tokenize(text))
+  let p = Parser(tokenize(text))
   let clauses : Array[Clause] = []
   for ;; {
     // skip stray periods
@@ -147,12 +147,12 @@ struct Parser {
 } derive(Debug)
 
 ///|
-/// A fresh parser over the given token stream, positioned at the start with
-/// no named variables.
+/// Builds a fresh parser over the given token stream, positioned at the
+/// start with no named variables.
 ///
-/// A custom free function (instead of `Parser::new`) so that the
-/// auto-generated `Parser(...)` constructor stays available.
-fn new_parser(toks : Array[TokItem]) -> Parser {
+/// Declared as the custom constructor `Parser(...)`, like
+/// [`Clause::Clause`](index.html#clause).
+fn Parser::Parser(toks : Array[TokItem]) -> Parser {
   { toks, pos: 0, vars: Map([]) }
 }
 
