@@ -21,26 +21,19 @@
 /// ```
 pub impl Compare for Term with fn compare(a : Term, b : Term) -> Int {
   match (a, b) {
-    (Var(x), Var(y)) =>
-      if x.id == y.id {
-        0
-      } else if x.id < y.id {
-        -1
-      } else {
-        1
-      }
+    (Var(x), Var(y)) => x.id.compare(y.id)
     (Var(_), _) => -1
     (_, Var(_)) => 1
-    (Float(x), Float(y)) => if x == y { 0 } else if x < y { -1 } else { 1 }
+    (Float(x), Float(y)) => x.compare(y)
     (Float(_), _) => -1
     (_, Float(_)) => 1
-    (Int(x), Int(y)) => if x == y { 0 } else if x < y { -1 } else { 1 }
+    (Int(x), Int(y)) => x.compare(y)
     (Int(_), _) => -1
     (_, Int(_)) => 1
-    (Atom(x), Atom(y)) => compare_strings(x, y)
+    (Atom(x), Atom(y)) => x.compare(y)
     (Atom(_), _) => -1
     (_, Atom(_)) => 1
-    (Str(x), Str(y)) => compare_strings(x, y)
+    (Str(x), Str(y)) => x.compare(y)
     (Str(_), _) => -1
     (_, Str(_)) => 1
     _ => compare_compounds(a, b)
@@ -62,17 +55,16 @@ fn compare_compounds(a : Term, b : Term) -> Int {
     Compound(f, args) => (f, args.length())
     _ => abort("compare_compounds: not a compound")
   }
-  let fc = compare_strings(fa, fb)
+  let fc = fa.compare(fb)
   if fc != 0 {
     fc
-  } else if aa != ab {
-    if aa < ab {
-      -1
-    } else {
-      1
-    }
   } else {
-    compare_args(a, b)
+    let ac = aa.compare(ab)
+    if ac != 0 {
+      ac
+    } else {
+      compare_args(a, b)
+    }
   }
 }
 
@@ -96,15 +88,4 @@ fn compare_args(a : Term, b : Term) -> Int {
     }
   }
   0
-}
-
-///|
-fn compare_strings(a : String, b : String) -> Int {
-  if a == b {
-    0
-  } else if a < b {
-    -1
-  } else {
-    1
-  }
 }
