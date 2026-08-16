@@ -101,6 +101,7 @@ pub(all) suberror ParseError {
   UnexpectedChar(pos~ : Int, ch~ : Char)
   UnexpectedEof(pos~ : Int)
   UnclosedString(pos~ : Int)
+  InvalidNumber(pos~ : Int, text~ : String)
 } derive(Debug)
 
 ///|
@@ -299,12 +300,12 @@ fn tokenize(text : String) -> Array[TokItem] raise ParseError {
           }
         }
         toks.push({
-          tok: TkFloat(parse_float_text(text[start:i].to_owned())),
+          tok: TkFloat(parse_float_text(text[start:i].to_owned(), start)),
           pos: start,
         })
       } else {
         toks.push({
-          tok: TkInt(parse_int_text(text[start:i].to_owned())),
+          tok: TkInt(parse_int_text(text[start:i].to_owned(), start)),
           pos: start,
         })
       }
@@ -392,54 +393,23 @@ fn tokenize(text : String) -> Array[TokItem] raise ParseError {
 }
 
 ///|
-/// Parses `123`.
-fn parse_int_text(s : String) -> Int {
-  let mut v = 0
-  for ch in s {
-    v = v * 10 + (ch.to_int() - '0'.to_int())
+/// Parses an integer literal like `123`, delegating to
+/// [`@string.parse_int`](index.html#parse_int). Takes an owned `String` so
+/// the raised [`ParseError::InvalidNumber`] can carry the text by ownership.
+fn parse_int_text(s : String, pos : Int) -> Int raise ParseError {
+  @string.parse_int(s) catch {
+    _ => raise ParseError::InvalidNumber(pos~, text=s)
   }
-  v
 }
 
 ///|
-/// Parses `1.5` / `1.5e-2` (no sign; unary `-` builds `-(N)`).
-fn parse_float_text(s : String) -> Double {
-  let mut mantissa = 0.0
-  let mut frac_scale = 1.0
-  let mut seen_dot = false
-  let mut exp = 0
-  let mut exp_sign = 1
-  let mut reading_exp = false
-  for ch in s {
-    if ch == '.' {
-      seen_dot = true
-    } else if ch == 'e' || ch == 'E' {
-      reading_exp = true
-    } else if reading_exp && ch == '-' {
-      exp_sign = -1
-    } else if reading_exp && ch == '+' {
-      ()
-    } else if reading_exp {
-      exp = exp * 10 + (ch.to_int() - '0'.to_int())
-    } else if seen_dot {
-      frac_scale = frac_scale / 10.0
-      mantissa = mantissa +
-        (ch.to_int() - '0'.to_int()).to_double() * frac_scale
-    } else {
-      mantissa = mantissa * 10.0 + (ch.to_int() - '0'.to_int()).to_double()
-    }
+/// Parses a float literal like `1.5` or `1.5e-2` (delegating to
+/// [`@string.parse_double`](index.html#parse_double); a leading `-` builds
+/// `-(N)` in the parser).
+fn parse_float_text(s : String, pos : Int) -> Double raise ParseError {
+  @string.parse_double(s) catch {
+    _ => raise ParseError::InvalidNumber(pos~, text=s)
   }
-  let mut result = mantissa
-  if exp_sign < 0 {
-    for _ in 0..<exp {
-      result = result / 10.0
-    }
-  } else {
-    for _ in 0..<exp {
-      result = result * 10.0
-    }
-  }
-  result
 }
 
 ///|

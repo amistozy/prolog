@@ -38,6 +38,7 @@ pub(all) suberror ParseError {
   UnexpectedChar(pos~ : Int, ch~ : Char)
   UnexpectedEof(pos~ : Int)
   UnclosedString(pos~ : Int)
+  InvalidNumber(pos~ : Int, text~ : String)
 } derive(@debug.Debug)
 
 pub(all) suberror PrologError {

@@ -253,14 +253,7 @@ pub impl Eq for Term with fn equal(a, b) {
 pub impl Show for Term with fn to_string(self) {
   match self {
     Int(i) => i.to_string()
-    Float(d) => {
-      let s = d.to_string()
-      if s.contains(".") {
-        s
-      } else {
-        s + ".0"
-      }
-    }
+    Float(d) => d.to_string()
     Atom(name) => name
     Str(s) => "\"\{s}\""
     Var(v) => if v.name == "" { "_\{v.id}" } else { v.name }
