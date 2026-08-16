@@ -179,7 +179,7 @@ fn Machine::sort(self : Machine, name : String, l : Term, s : Term) -> Bool {
   match list_parts(l.deref(self.subst)) {
     Some((elems, tail)) if tail is Atom("[]") => {
       let resolved = elems.map(x => x.resolve(self.subst))
-      resolved.sort_by((a, b) => a.compare(b))
+      resolved.sort()
       if name == "sort" {
         resolved.dedup()
       }
@@ -618,7 +618,7 @@ fn Machine::bagof(
   if set {
     for i in 0..<groups.length() {
       let elems = groups[i].1
-      elems.sort_by((a, b) => a.compare(b))
+      elems.sort()
       elems.dedup()
     }
   }
