@@ -46,12 +46,14 @@ pub(all) suberror PrologError {
 ///
 /// `dyn_store` is the dynamic clause store backing `asserta/1`, `assertz/1`,
 /// `retract/1`, `retractall/1`, `abolish/1` and `clause/2` (cf. Scryer's
-/// dynamic predicates). It lives in a `Ref`, so all copies of the program
-/// — including the machine created per query — share one store, and
-/// assertions persist across queries on the same `Program` value.
+/// dynamic predicates). A `Map` is a mutable heap object, so copying the
+/// `Program` struct copies the reference, not the store: every machine
+/// created per query mutates the same store, and assertions persist across
+/// queries on the same `Program` value (no `Ref` wrapper needed — the
+/// field is never rebound, only the map's contents are mutated).
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
-  dyn_store : Ref[Map[(String, Int), Ref[DynPred]]]
+  dyn_store : Map[(String, Int), Array[DynClause]]
 } derive(Debug)
 
 ///|
@@ -73,7 +75,7 @@ pub struct Program {
 /// }
 /// ```
 pub fn Program::Program(clauses : Array[Clause]) -> Program raise PrologError {
-  let p = { clauses: Map([]), dyn_store: Ref(Map([])) }
+  let p = { clauses: Map([]), dyn_store: Map([]) }
   for c in clauses {
     p.add(c)
   }
@@ -89,9 +91,7 @@ pub fn Program::add(self : Program, c : Clause) -> Unit raise PrologError {
   match c.head.head_key() {
     Some(key) =>
       if self.is_dynamic(key) {
-        let pred = self.dyn_pred(key)
-        pred.val.clauses.push({ id: pred.val.next_id, dead: false, clause: c })
-        pred.val.next_id = pred.val.next_id + 1
+        self.dyn_pred(key).push({ dead: false, clause: c })
       } else {
         match self.clauses.get(key) {
           Some(existing) => existing.push(c)

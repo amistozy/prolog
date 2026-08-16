@@ -3,9 +3,11 @@
 /// `retractall/1`, `abolish/1`, `clause/2` and `dynamic/1`, modeled after
 /// Scryer Prolog's dynamic clause store (`src/machine/loader.rs`).
 ///
-/// The store lives inside [`Program`] in a `Ref`, so every machine created
-/// from the same program shares it: assertions persist across queries on
-/// the same `Program` value, exactly like a Prolog database.
+/// The store lives inside [`Program`] as a plain `Map`: a `Map` is a
+/// mutable heap object, so every copy of the program — including the
+/// machine created per query — shares one store, and assertions persist
+/// across queries on the same `Program` value, exactly like a Prolog
+/// database.
 ///
 /// Semantics notes:
 ///
@@ -23,25 +25,11 @@
 /// - `:- dynamic(...)` directives are honored by [`parse_program`].
 
 ///|
-/// The dynamic clause list of one predicate. Clauses are never removed;
-/// `retract`/`retractall` mark them dead, so the index of a pending choice
-/// point never shifts (only `asserta` inserts, at position 0, which skips
-/// the new clause for already-created choice points — the SWI behavior).
-///
-/// Public only because [`Program`] references it; the fields are private
-/// and there is no public constructor, so users cannot build or inspect
-/// one.
-pub(all) struct DynPred {
-  mut next_id : Int
-  clauses : Array[DynClause]
-} derive(Debug)
-
-///|
-/// One stored dynamic clause: a unique id within its predicate plus the
-/// `dead` flag set by retraction. Public only because [`DynPred`]
-/// references it.
-pub(all) struct DynClause {
-  id : Int
+/// One stored dynamic clause: the `dead` flag set by `retract/1` /
+/// `retractall/1`. Public only because [`Program`] references it; the
+/// fields are private and there is no public constructor, so users cannot
+/// build or inspect one.
+pub struct DynClause {
   mut dead : Bool
   clause : Clause
 } derive(Debug)
@@ -49,19 +37,20 @@ pub(all) struct DynClause {
 ///|
 /// Is `key` a dynamic predicate of the program?
 fn Program::is_dynamic(self : Program, key : (String, Int)) -> Bool {
-  self.dyn_store.val.contains(key)
+  self.dyn_store.contains(key)
 }
 
 ///|
 /// The dynamic clause list of `key`, creating it (and thereby declaring
-/// `key` dynamic) when missing.
-fn Program::dyn_pred(self : Program, key : (String, Int)) -> Ref[DynPred] {
-  match self.dyn_store.val.get(key) {
-    Some(pred) => pred
+/// `key` dynamic) when missing. The returned array is the shared store
+/// entry, so pushing to it mutates the program's store.
+fn Program::dyn_pred(self : Program, key : (String, Int)) -> Array[DynClause] {
+  match self.dyn_store.get(key) {
+    Some(arr) => arr
     None => {
-      let pred = Ref({ next_id: 0, clauses: [] })
-      self.dyn_store.val[key] = pred
-      pred
+      let arr : Array[DynClause] = []
+      self.dyn_store[key] = arr
+      arr
     }
   }
 }
@@ -85,10 +74,9 @@ fn Program::dyn_pred(self : Program, key : (String, Int)) -> Ref[DynPred] {
 pub fn Program::declare_dynamic(self : Program, key : (String, Int)) -> Unit {
   match self.clauses.get(key) {
     Some(cls) => {
-      let pred = self.dyn_pred(key)
+      let arr = self.dyn_pred(key)
       for c in cls {
-        pred.val.clauses.push({ id: pred.val.next_id, dead: false, clause: c })
-        pred.val.next_id = pred.val.next_id + 1
+        arr.push({ dead: false, clause: c })
       }
       self.clauses.remove(key)
     }
@@ -102,10 +90,10 @@ pub fn Program::declare_dynamic(self : Program, key : (String, Int)) -> Unit {
 /// The clauses of `key` to try when calling it: the live dynamic clauses
 /// for a dynamic predicate, the static clauses otherwise.
 fn Machine::clauses_of(self : Machine, key : (String, Int)) -> Array[Clause]? {
-  match self.prog.dyn_store.val.get(key) {
-    Some(pred) => {
+  match self.prog.dyn_store.get(key) {
+    Some(arr) => {
       let live : Array[Clause] = []
-      for dc in pred.val.clauses {
+      for dc in arr {
         if !dc.dead {
           live.push(dc.clause)
         }
@@ -136,14 +124,13 @@ fn Machine::assert_goal(self : Machine, t : Term, prepend : Bool) -> Bool {
         // failure in this EDSL.
         return false
       }
-      let pred = self.prog.dyn_pred(key)
-      let dc = { id: pred.val.next_id, dead: false, clause: Clause(head, body) }
+      let arr = self.prog.dyn_pred(key)
+      let dc = { dead: false, clause: Clause(head, body) }
       if prepend {
-        pred.val.clauses.insert(0, dc)
+        arr.insert(0, dc)
       } else {
-        pred.val.clauses.push(dc)
+        arr.push(dc)
       }
-      pred.val.next_id = pred.val.next_id + 1
       true
     }
   }
@@ -196,18 +183,18 @@ fn Machine::retract_from_key(
   from : Int,
   mark : Int,
 ) -> Bool {
-  match self.prog.dyn_store.val.get(key) {
+  match self.prog.dyn_store.get(key) {
     None => false
-    Some(pred) =>
-      match self.find_retract_index(pred.val, head, body, from) {
+    Some(arr) =>
+      match self.find_retract_index(arr, head, body, from) {
         None => false
         Some((i, s2)) => {
-          if i + 1 < pred.val.clauses.length() {
+          if i + 1 < arr.length() {
             self.push_choice(
               Goal(goal=retract_next_goal(key, head, body, i + 1), mark~),
             )
           }
-          pred.val.clauses[i].dead = true
+          arr[i].dead = true
           // the head/body unification is committed, so e.g.
           // `retract(r(Y))` binds the caller's `Y`
           self.commit(s2)
@@ -217,18 +204,18 @@ fn Machine::retract_from_key(
 }
 
 ///|
-/// The first non-dead clause of `pred`, at index `>= from`, whose head and
+/// The first non-dead clause of `arr`, at index `>= from`, whose head and
 /// body unify with `head` / `body` (clauses are standardized apart first,
 /// like in `clause/2`), together with the unifying substitution.
 fn Machine::find_retract_index(
   self : Machine,
-  pred : DynPred,
+  arr : Array[DynClause],
   head : Term,
   body : Term,
   from : Int,
 ) -> (Int, Subst)? {
-  for i in from..<pred.clauses.length() {
-    let dc = pred.clauses[i]
+  for i in from..<arr.length() {
+    let dc = arr[i]
     if dc.dead {
       continue
     }
@@ -265,17 +252,17 @@ fn Machine::retractall(self : Machine, h : Term) -> Unit {
   match head.head_key() {
     None => ()
     Some(key) =>
-      match self.prog.dyn_store.val.get(key) {
+      match self.prog.dyn_store.get(key) {
         None => ()
-        Some(pred) =>
-          for i in 0..<pred.val.clauses.length() {
-            let dc = pred.val.clauses[i]
+        Some(arr) =>
+          for i in 0..<arr.length() {
+            let dc = arr[i]
             if dc.dead {
               continue
             }
             let (rh, _) = fresh_rename(dc.clause)
             if head.unify(rh, self.subst) is Some(_) {
-              pred.val.clauses[i].dead = true
+              arr[i].dead = true
             }
           }
       }
@@ -296,16 +283,16 @@ fn Machine::clause_goal(self : Machine, h : Term, b : Term, mark : Int) -> Bool 
     Some(key) => [key]
     None =>
       if head is Var(_) {
-        self.prog.dyn_store.val.keys().to_array()
+        self.prog.dyn_store.keys().to_array()
       } else {
         return false
       }
   }
   for key in keys {
-    match self.prog.dyn_store.val.get(key) {
+    match self.prog.dyn_store.get(key) {
       None => continue
-      Some(pred) =>
-        for dc in pred.val.clauses {
+      Some(arr) =>
+        for dc in arr {
           if dc.dead {
             continue
           }
@@ -334,7 +321,7 @@ fn Machine::abolish(self : Machine, i : Term) -> Bool {
       if self.prog.clauses.contains((name, arity)) {
         false
       } else {
-        let _ = self.prog.dyn_store.val.remove((name, arity))
+        let _ = self.prog.dyn_store.remove((name, arity))
         true
       }
     _ => false

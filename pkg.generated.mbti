@@ -4,7 +4,6 @@ package "amistozy/prolog"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashmap",
-  "moonbitlang/core/ref",
 }
 
 // Values
@@ -66,20 +65,14 @@ pub struct Clause {
 pub fn Clause::Clause(Term, Term) -> Self
 pub fn Clause::fact(Term) -> Self
 
-pub(all) struct DynClause {
-  id : Int
+pub struct DynClause {
   mut dead : Bool
   clause : Clause
 } derive(@debug.Debug)
 
-pub(all) struct DynPred {
-  mut next_id : Int
-  clauses : Array[DynClause]
-} derive(@debug.Debug)
-
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
-  dyn_store : @ref.Ref[Map[(String, Int), @ref.Ref[DynPred]]]
+  dyn_store : Map[(String, Int), Array[DynClause]]
 } derive(@debug.Debug)
 pub fn Program::Program(Array[Clause]) -> Self raise PrologError
 pub fn Program::add(Self, Clause) -> Unit raise PrologError
