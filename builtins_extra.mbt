@@ -220,29 +220,23 @@ fn Machine::atom_concat(
 
 ///|
 /// `call(G, A1, ..., An)`: appends the extra arguments to `G` and calls it.
+/// The goal plus its arguments are destructured from `args` with an array
+/// pattern, so any arity is supported.
 fn Machine::call_n(self : Machine, args : Array[Term], mark : Int) -> Bool {
-  let g = args[0].deref(self.subst)
-  match g {
-    Var(_) => false
-    Atom(name) => {
-      let full : Array[Term] = []
-      for i in 1..<args.length() {
-        full.push(args[i])
+  match args {
+    [goal, .. extra] =>
+      match goal.deref(self.subst) {
+        Var(_) => false
+        Atom(name) => {
+          self.push_goal(compound(name, extra.to_owned()), mark)
+          true
+        }
+        Compound(name, gargs) => {
+          self.push_goal(compound(name, gargs + extra.to_owned()), mark)
+          true
+        }
+        _ => false
       }
-      self.push_goal(compound(name, full), mark)
-      true
-    }
-    Compound(name, gargs) => {
-      let full : Array[Term] = []
-      for a in gargs {
-        full.push(a)
-      }
-      for i in 1..<args.length() {
-        full.push(args[i])
-      }
-      self.push_goal(compound(name, full), mark)
-      true
-    }
     _ => false
   }
 }

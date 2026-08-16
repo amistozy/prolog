@@ -181,7 +181,7 @@ Builtin predicates (they take precedence over clauses with the same name):
 - arithmetic: `is`, `<`, `>`, `=<`/`<=`, `>=`, `=:=`, `=\=`;
   functors `+ - * / // div mod ^ abs max min sqrt` (with ISO semantics:
   `/` is float division, `//` truncates, `div`/`mod` floor)
-- meta: `not/1` and `\+` (with a cut-local scope), `call/1..8`,
+- meta: `not/1` and `\+` (with a cut-local scope), `call/N`,
   `ignore/1`, `once/1`, `repeat/0`, `forall/2`, `findall/3`,
   `bagof/3`, `setof/3` (with `^` existential quantification),
   `copy_term/2`, `term_variables/2`

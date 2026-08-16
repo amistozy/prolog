@@ -208,17 +208,7 @@ fn Machine::run_builtin(
         None => Some(false)
       }
     ("not", 1) => Some(self.not(args[0]))
-    ("call", 1) => {
-      self.push_goal(args[0], mark)
-      Some(true)
-    }
-    ("call", 2)
-    | ("call", 3)
-    | ("call", 4)
-    | ("call", 5)
-    | ("call", 6)
-    | ("call", 7)
-    | ("call", 8) => Some(self.call_n(args, mark))
+    ("call", n) if n >= 1 => Some(self.call_n(args, mark))
     ("ignore", 1) => {
       // ignore(G): call G, succeed whether or not G has a solution.
       self.push_goal(

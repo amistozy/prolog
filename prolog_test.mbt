@@ -871,6 +871,24 @@ test "call/N, ignore, copy_term, term_variables" {
   assert_eq(a2.length(), 2)
   assert_eq(a2[0].to_string(), "X = 1, Y = a")
   assert_eq(a2[1].to_string(), "X = 2, Y = b")
+  // call supports any arity (here nine arguments)
+  p.add(parse_clause("nine(1, 2, 3, 4, 5, 6, 7, 8, 9) :- true."))
+  let a9 = p
+    .solve([
+      compound("call", [
+        compound("nine", [x, y]),
+        int(3),
+        int(4),
+        int(5),
+        int(6),
+        int(7),
+        int(8),
+        int(9),
+      ]),
+    ])
+    .to_array()
+  assert_eq(a9.length(), 1)
+  assert_eq(a9[0].to_string(), "X = 1, Y = 2")
   // ignore succeeds whether or not its goal succeeds
   let a3 = p
     .solve([compound("ignore", [compound("q", [int(99), y])])])
