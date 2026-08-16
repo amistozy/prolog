@@ -209,7 +209,7 @@ fn Machine::atom_concat(
         let prefix = z[0:i].to_owned()
         let suffix = z[i:].to_owned()
         self.push_choice(
-          Goal(goal=a.eq(atom(prefix)).and_(b.eq(atom(suffix))), mark~),
+          Goal(goal=a.eq(atom(prefix)) & b.eq(atom(suffix)), mark~),
         )
       }
       self.unify_goal(a, atom("")) && self.unify_goal(b, atom(z))
@@ -509,11 +509,10 @@ fn Machine::sub_atom(self : Machine, args : Array[Term], mark : Int) -> Bool {
         let af = n - b - l
         self.push_choice(
           Goal(
-            goal=args[1]
-              .eq(int(b))
-              .and_(args[2].eq(int(l)))
-              .and_(args[3].eq(int(af)))
-              .and_(args[4].eq(atom(s[b:b + l].to_owned()))),
+            goal=args[1].eq(int(b)) &
+              args[2].eq(int(l)) &
+              args[3].eq(int(af)) &
+              args[4].eq(atom(s[b:b + l].to_owned())),
             mark~,
           ),
         )

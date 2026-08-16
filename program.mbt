@@ -9,8 +9,8 @@ pub struct Clause {
 } derive(Debug)
 
 ///|
-/// Builds a rule `head :- body`, where `body` is a single goal (use
-/// [`Term::and_`] / the `&` operator to build conjunctions).
+/// Builds a rule `head :- body`, where `body` is a single goal (use the
+/// `&` operator to build conjunctions, `|` for disjunctions).
 ///
 /// ```mbt check
 /// test {
@@ -103,18 +103,6 @@ pub fn Term::head_key(self : Term) -> (String, Int)? {
     Compound(name, args) => Some((name, args.length()))
     _ => None
   }
-}
-
-///|
-/// Builds the conjunction `(a, b)`; also available as `a & b`.
-pub fn Term::and_(self : Term, b : Term) -> Term {
-  Compound(",", [self, b])
-}
-
-///|
-/// Builds the disjunction `(a ; b)`.
-pub fn Term::or(self : Term, b : Term) -> Term {
-  Compound(";", [self, b])
 }
 
 ///|

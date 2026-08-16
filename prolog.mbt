@@ -16,9 +16,10 @@
 ///   let x = variable("X")
 ///   let t = Compound("parent", [x, atom("john"), list([int(1), int(2)])])
 ///   assert_eq(t.to_string(), "parent(X, john, [1, 2])")
-///   // operators: `|` is list cons, `&` is conjunction, arithmetic builds terms
-///   assert_eq((int(1) | cons(int(2), cons(int(3), empty_list()))).to_string(), "[1, 2, 3]")
+///   // operators: `|` is disjunction, `&` is conjunction, arithmetic builds terms
+///   assert_eq(cons(int(1), cons(int(2), cons(int(3), empty_list()))).to_string(), "[1, 2, 3]")
 ///   assert_eq((x & atom("true")).to_string(), "X, true")
+///   assert_eq((x | atom("true")).to_string(), "(X; true)")
 ///   assert_eq((x + int(1)).to_string(), "(X + 1)")
 /// }
 /// ```
@@ -39,7 +40,7 @@
 ///     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ///     Clause(
 ///       compound("ancestor", [ax, ay]),
-///       compound("parent", [ax, az]).and_(compound("ancestor", [az, ay])),
+///       compound("parent", [ax, az]) & compound("ancestor", [az, ay])),
 ///     ),
 ///   ])
 ///   let qx = variable("X")

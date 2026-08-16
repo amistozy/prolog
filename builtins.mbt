@@ -277,7 +277,7 @@ fn Machine::run_builtin(
       Some(true)
     }
     ("findall", 3) => Some(self.findall(args[0], args[1], args[2]))
-    ("forall", 2) => Some(self.not(args[0].and_(args[1].not())))
+    ("forall", 2) => Some(self.not(args[0] & args[1].not()))
     ("functor", 3) => Some(self.functor(args[0], args[1], args[2]))
     ("arg", 3) => Some(self.arg(args[0], args[1], args[2]))
     ("=..", 2) => Some(self.univ(args[0], args[1]))

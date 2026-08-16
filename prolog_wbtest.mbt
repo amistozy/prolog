@@ -146,7 +146,7 @@ test "machine: fresh variables per clause invocation" {
   // same clause invoked twice in one query must not share variables
   let t = variable("T")
   let p = Program([
-    Clause(compound("twice", [t]), compound("t", [t]).and_(compound("t", [t]))),
+    Clause(compound("twice", [t]), compound("t", [t]) & compound("t", [t])),
     Clause::fact(compound("t", [int(1)])),
     Clause::fact(compound("t", [int(2)])),
   ])
@@ -166,7 +166,7 @@ test "machine: cut inside not stays local" {
   let x = variable("X")
   // not((true, !)) fails since (true, !) succeeds -> no answers
   let answers = p
-    .solve([compound("p", [x]), atom("true").and_(atom("!")).not()])
+    .solve([compound("p", [x]), (atom("true") & atom("!")).not()])
     .to_array()
   assert_eq(answers.length(), 0)
   // not(p(99)) succeeds, and both p solutions survive

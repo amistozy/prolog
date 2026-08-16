@@ -45,7 +45,6 @@ using @prolog {
   fact,
   rule,
   variable,
-  and_,
   program,
   solve_first,
   type PrologError,
@@ -69,10 +68,11 @@ test {
   assert_eq(list([int(1), int(2)]).to_string(), "[1, 2]")
   assert_eq(cons(int(1), variable("T")).to_string(), "[1 | T]")
   assert_eq(compound("f", [x, int(1)]).to_string(), "f(X, 1)")
-  // operator sugar: `|` is list cons, `&` is conjunction,
+  // operator sugar: `|` is disjunction `;`, `&` is conjunction `,`,
   // `+ - * / %` build arithmetic terms, `-x` unary negation
-  assert_eq((int(1) | cons(int(2), empty_list())).to_string(), "[1, 2]")
+  assert_eq(cons(int(1), cons(int(2), empty_list())).to_string(), "[1, 2]")
   assert_eq((x & atom("true")).to_string(), "X, true")
+  assert_eq((x | atom("true")).to_string(), "(X; true)")
   assert_eq((x + int(1)).to_string(), "(X + 1)")
 }
 ```
@@ -95,7 +95,7 @@ test {
     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
     Clause(
       compound("ancestor", [x, y]),
-      compound("parent", [x, z]).and_(compound("ancestor", [z, y])),
+      compound("parent", [x, z]) & compound("ancestor", [z, y]),
     ),
   ])
   let y2 = variable("Y")
@@ -106,8 +106,9 @@ test {
 }
 ```
 
-Lists can be built either as `list([...])` or as cons chains (`h | t`,
-`list_tail`); both representations unify with each other.
+Lists can be built either as `list([...])` or as cons chains (`cons`,
+`list_tail`); both representations unify with each other. The `|` operator
+is reserved for the Prolog disjunction `;`.
 
 ## Querying
 

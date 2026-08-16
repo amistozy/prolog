@@ -58,7 +58,7 @@ pub fn Term::dcg_body(self : Term, s0 : Term, s : Term) -> Term {
     Compound(".", [h, t]) => dcg_terminals(cons(h, t), s0, s)
     Compound(",", [a, b]) => {
       let s1 = variable("")
-      a.dcg_body(s0, s1).and_(b.dcg_body(s1, s))
+      a.dcg_body(s0, s1) & b.dcg_body(s1, s)
     }
     Compound(";", [a, b]) =>
       match a {
@@ -70,18 +70,16 @@ pub fn Term::dcg_body(self : Term, s0 : Term, s : Term) -> Term {
             b.dcg_body(s0, s),
           ])
         }
-        _ => a.dcg_body(s0, s).or(b.dcg_body(s0, s))
+        _ => a.dcg_body(s0, s) | b.dcg_body(s0, s)
       }
-    Compound("{}", [g]) => g.and_(s0.eq(s))
-    Atom("!") => atom("!").and_(s0.eq(s))
+    Compound("{}", [g]) => g & s0.eq(s)
+    Atom("!") => atom("!") & s0.eq(s)
     Compound("call", [g]) => compound("call", [g, s0, s])
     Compound("phrase", [b]) => compound("phrase", [b, s0, s])
     Compound("phrase", [b, a]) => compound("phrase", [b, a, s0, s])
     Compound("phrase", [b, a1, a2]) => compound("phrase", [b, a1, a2, s0, s])
     Compound("\\+", [g]) =>
-      compound("\\+", [compound("phrase", [g, s0, variable("")])]).and_(
-        s0.eq(s),
-      )
+      compound("\\+", [compound("phrase", [g, s0, variable("")])]) & s0.eq(s)
     _ => dcg_nonterminal(self, s0, s)
   }
 }
@@ -114,7 +112,7 @@ fn dcg_terminals(t : Term, s0 : Term, s : Term) -> Term {
       if tail is Atom("[]") {
         s0.eq(list_tail(elems, s))
       } else {
-        s0.eq(list_tail(elems, tail)).and_(tail.eq(s))
+        s0.eq(list_tail(elems, tail)) & tail.eq(s)
       }
     None => s0.eq(t)
   }

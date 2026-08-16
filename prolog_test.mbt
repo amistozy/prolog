@@ -39,12 +39,13 @@ test "term construction and rendering" {
     compound("parent", [atom("john"), atom("mary")]).to_string(),
     "parent(john, mary)",
   )
-  // operators: `|` cons (right-nest for chains), `&` conjunction, arithmetic terms
+  // operators: `|` disjunction, `&` conjunction, arithmetic terms
   assert_eq(
-    (int(1) | cons(int(2), cons(int(3), empty_list()))).to_string(),
+    cons(int(1), cons(int(2), cons(int(3), empty_list()))).to_string(),
     "[1, 2, 3]",
   )
   assert_eq((x & atom("true")).to_string(), "X, true")
+  assert_eq((x | atom("true")).to_string(), "(X; true)")
   assert_eq((x + int(1)).to_string(), "(X + 1)")
   assert_eq((x - int(1)).to_string(), "(X - 1)")
   assert_eq((x * int(2)).to_string(), "(X * 2)")
@@ -96,7 +97,7 @@ test "recursive rules: ancestor" {
     // ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
     Clause(
       compound("ancestor", [ax, ay]),
-      compound("parent", [ax, az]).and_(compound("ancestor", [az, ay])),
+      compound("parent", [ax, az]) & compound("ancestor", [az, ay]),
     ),
   ])
   let y2 = variable("Y")
@@ -276,7 +277,7 @@ test "negation, disjunction, cut" {
   let n3 = p.solve([compound("single_parent", [atom("ann")])]).to_array()
   assert_eq(n3.length(), 1)
   // disjunction
-  let d = p.solve([x.eq(atom("a")).or(x.eq(atom("b")))]).to_array()
+  let d = p.solve([x.eq(atom("a")) | x.eq(atom("b"))]).to_array()
   assert_eq(d.length(), 2)
   assert_eq(d[0].to_string(), "X = a")
   assert_eq(d[1].to_string(), "X = b")

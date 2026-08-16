@@ -96,7 +96,6 @@ pub(all) enum Term {
   Compound(String, Array[Term])
 } derive(@debug.Debug)
 pub fn Term::Term(String) -> Self raise ParseError
-pub fn Term::and_(Self, Self) -> Self
 pub fn Term::compare_terms(Self, Self) -> Int
 pub fn Term::dcg_body(Self, Self, Self) -> Self
 pub fn Term::deref(Self, @hashmap.HashMap[Int, Self]) -> Self
@@ -108,7 +107,6 @@ pub fn Term::is_(Self, Self) -> Self
 pub fn Term::neq(Self, Self) -> Self
 pub fn Term::not(Self) -> Self
 pub fn Term::not_identical(Self, Self) -> Self
-pub fn Term::or(Self, Self) -> Self
 pub fn Term::resolve(Self, @hashmap.HashMap[Int, Self]) -> Self
 pub fn Term::unify(Self, Self, @hashmap.HashMap[Int, Self]) -> @hashmap.HashMap[Int, Self]?
 pub impl Add for Term

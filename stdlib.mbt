@@ -136,7 +136,7 @@ fn length_clauses() -> Array[Clause] {
     Clause::fact(compound("length", [empty_list(), Int(0)])),
     Clause(
       compound("length", [cons(variable("_"), t), n]),
-      compound("length", [t, n1]).and_(n.is_(Compound("+", [n1, Int(1)]))),
+      compound("length", [t, n1]) & n.is_(Compound("+", [n1, Int(1)])),
     ),
   ]
 }
@@ -152,10 +152,9 @@ fn reverse_clauses() -> Array[Clause] {
   [
     Clause::fact(compound("reverse", [empty_list(), empty_list()])),
     Clause(
-      compound("reverse", [h | t, r]),
-      compound("reverse", [t, r1]).and_(
-        compound("append", [r1, cons(h, empty_list()), r]),
-      ),
+      compound("reverse", [cons(h, t), r]),
+      compound("reverse", [t, r1]) &
+      compound("append", [r1, cons(h, empty_list()), r]),
     ),
   ]
 }
@@ -169,12 +168,12 @@ fn between_clauses() -> Array[Clause] {
   let x = variable("X")
   let l1 = variable("L1")
   [
-    Clause(compound("between", [l, u, x]), x.eq(l).and_(Compound("<=", [l, u]))),
+    Clause(compound("between", [l, u, x]), x.eq(l) & Compound("<=", [l, u])),
     Clause(
       compound("between", [l, u, x]),
-      Compound("<", [l, u])
-      .and_(l1.is_(Compound("+", [l, Int(1)])))
-      .and_(compound("between", [l1, u, x])),
+      Compound("<", [l, u]) &
+      l1.is_(Compound("+", [l, Int(1)])) &
+      compound("between", [l1, u, x]),
     ),
   ]
 }
@@ -199,12 +198,12 @@ fn nth_clauses() -> Array[Clause] {
     Clause::fact(compound("nth0", [int(0), cons(i, t), i])),
     Clause(
       compound("nth0", [i2, cons(variable("_"), t2), x2]),
-      compound("nth0", [m, t2, x2]).and_(i2.is_(Compound("+", [m, Int(1)]))),
+      compound("nth0", [m, t2, x2]) & i2.is_(Compound("+", [m, Int(1)])),
     ),
     Clause::fact(compound("nth1", [int(1), cons(i3, t), i3])),
     Clause(
       compound("nth1", [i4, cons(variable("_"), t4), x4]),
-      compound("nth1", [m2, t4, x4]).and_(i4.is_(Compound("+", [m2, Int(1)]))),
+      compound("nth1", [m2, t4, x4]) & i4.is_(Compound("+", [m2, Int(1)])),
     ),
   ]
 }
@@ -235,7 +234,7 @@ fn sum_list_clauses() -> Array[Clause] {
     Clause::fact(compound("sum_list", [empty_list(), int(0)])),
     Clause(
       compound("sum_list", [cons(x, t), s]),
-      compound("sum_list", [t, s1]).and_(s.is_(Compound("+", [s1, x]))),
+      compound("sum_list", [t, s1]) & s.is_(Compound("+", [s1, x])),
     ),
   ]
 }
@@ -252,7 +251,7 @@ fn max_list_clauses() -> Array[Clause] {
     Clause::fact(compound("max_list", [cons(x, empty_list()), x])),
     Clause(
       compound("max_list", [cons(x, t), m]),
-      compound("max_list", [t, m1]).and_(m.is_(Compound("max", [x, m1]))),
+      compound("max_list", [t, m1]) & m.is_(Compound("max", [x, m1])),
     ),
   ]
 }
@@ -269,7 +268,7 @@ fn min_list_clauses() -> Array[Clause] {
     Clause::fact(compound("min_list", [cons(x, empty_list()), x])),
     Clause(
       compound("min_list", [cons(x, t), m]),
-      compound("min_list", [t, m1]).and_(m.is_(Compound("min", [x, m1]))),
+      compound("min_list", [t, m1]) & m.is_(Compound("min", [x, m1])),
     ),
   ]
 }
@@ -308,9 +307,9 @@ fn flatten_clauses() -> Array[Clause] {
     Clause::fact(compound("flatten", [empty_list(), empty_list()])),
     Clause(
       compound("flatten", [cons(h, t), f]),
-      compound("flatten", [h, f1])
-      .and_(compound("flatten", [t, f2]))
-      .and_(compound("append", [f1, f2, f])),
+      compound("flatten", [h, f1]) &
+      compound("flatten", [t, f2]) &
+      compound("append", [f1, f2, f]),
     ),
     Clause(
       compound("flatten", [x, cons(x, empty_list())]),
@@ -331,7 +330,7 @@ fn permutation_clauses() -> Array[Clause] {
     Clause::fact(compound("permutation", [empty_list(), empty_list()])),
     Clause(
       compound("permutation", [l, cons(h, t)]),
-      compound("select", [h, l, r]).and_(compound("permutation", [r, t])),
+      compound("select", [h, l, r]) & compound("permutation", [r, t]),
     ),
   ]
 }
@@ -351,19 +350,19 @@ fn maplist_clauses() -> Array[Clause] {
     Clause::fact(compound("maplist", [p, empty_list()])),
     Clause(
       compound("maplist", [p, cons(x, xs)]),
-      compound("call", [p, x]).and_(compound("maplist", [p, xs])),
+      compound("call", [p, x]) & compound("maplist", [p, xs]),
     ),
     Clause::fact(compound("maplist", [p, empty_list(), empty_list()])),
     Clause(
       compound("maplist", [p, cons(x, xs), cons(y, ys)]),
-      compound("call", [p, x, y]).and_(compound("maplist", [p, xs, ys])),
+      compound("call", [p, x, y]) & compound("maplist", [p, xs, ys]),
     ),
     Clause::fact(
       compound("maplist", [p, empty_list(), empty_list(), empty_list()]),
     ),
     Clause(
       compound("maplist", [p, cons(x, xs), cons(y, ys), cons(z, zs)]),
-      compound("call", [p, x, y, z]).and_(compound("maplist", [p, xs, ys, zs])),
+      compound("call", [p, x, y, z]) & compound("maplist", [p, xs, ys, zs]),
     ),
   ]
 }
@@ -381,7 +380,7 @@ fn foldl_clauses() -> Array[Clause] {
     Clause::fact(compound("foldl", [g, empty_list(), a, a])),
     Clause(
       compound("foldl", [g, cons(x, xs), a0, a]),
-      compound("call", [g, x, a0, a1]).and_(compound("foldl", [g, xs, a1, a])),
+      compound("call", [g, x, a0, a1]) & compound("foldl", [g, xs, a1, a]),
     ),
   ]
 }
@@ -394,7 +393,7 @@ fn memberchk_clauses() -> Array[Clause] {
   [
     Clause(
       compound("memberchk", [x, xs]),
-      compound("member", [x, xs]).and_(atom("!")),
+      compound("member", [x, xs]) & atom("!"),
     ),
   ]
 }
@@ -408,7 +407,7 @@ fn selectchk_clauses() -> Array[Clause] {
   [
     Clause(
       compound("selectchk", [x, xs, ys]),
-      compound("select", [x, xs, ys]).and_(atom("!")),
+      compound("select", [x, xs, ys]) & atom("!"),
     ),
   ]
 }
@@ -424,17 +423,15 @@ fn succ_clauses() -> Array[Clause] {
     // succ(I, S) :- integer(S), !, S > 0, I is S - 1.
     Clause(
       compound("succ", [i, s]),
-      compound("integer", [s])
-      .and_(atom("!"))
-      .and_(Compound(">", [s, int(0)]))
-      .and_(i.is_(Compound("-", [s, int(1)]))),
+      compound("integer", [s]) &
+      atom("!") &
+      Compound(">", [s, int(0)]) &
+      i.is_(Compound("-", [s, int(1)])),
     ),
     // succ(I, S) :- integer(I), !, S is I + 1.
     Clause(
       compound("succ", [i, s]),
-      compound("integer", [i])
-      .and_(atom("!"))
-      .and_(s.is_(Compound("+", [i, int(1)]))),
+      compound("integer", [i]) & atom("!") & s.is_(Compound("+", [i, int(1)])),
     ),
   ]
 }
@@ -449,24 +446,24 @@ fn plus_clauses() -> Array[Clause] {
   [
     Clause(
       compound("plus", [a, b, c]),
-      compound("integer", [a])
-      .and_(compound("integer", [b]))
-      .and_(atom("!"))
-      .and_(c.is_(Compound("+", [a, b]))),
+      compound("integer", [a]) &
+      compound("integer", [b]) &
+      atom("!") &
+      c.is_(Compound("+", [a, b])),
     ),
     Clause(
       compound("plus", [a, b, c]),
-      compound("integer", [a])
-      .and_(compound("integer", [c]))
-      .and_(atom("!"))
-      .and_(b.is_(Compound("-", [c, a]))),
+      compound("integer", [a]) &
+      compound("integer", [c]) &
+      atom("!") &
+      b.is_(Compound("-", [c, a])),
     ),
     Clause(
       compound("plus", [a, b, c]),
-      compound("integer", [b])
-      .and_(compound("integer", [c]))
-      .and_(atom("!"))
-      .and_(a.is_(Compound("-", [c, b]))),
+      compound("integer", [b]) &
+      compound("integer", [c]) &
+      atom("!") &
+      a.is_(Compound("-", [c, b])),
     ),
   ]
 }
@@ -485,17 +482,17 @@ fn numlist_clauses() -> Array[Clause] {
   [
     Clause(
       compound("numlist", [l, u, ns]),
-      compound("integer", [l])
-      .and_(compound("integer", [u]))
-      .and_(Compound("=<", [l, u]))
-      .and_(compound("numlist_", [l, u, ns])),
+      compound("integer", [l]) &
+      compound("integer", [u]) &
+      Compound("=<", [l, u]) &
+      compound("numlist_", [l, u, ns]),
     ),
     Clause::fact(compound("numlist_", [u, u, cons(u, empty_list())])),
     Clause(
       compound("numlist_", [l2, u2, cons(l2, ns2)]),
-      Compound("<", [l2, u2])
-      .and_(l1.is_(Compound("+", [l2, int(1)])))
-      .and_(compound("numlist_", [l1, u2, ns2])),
+      Compound("<", [l2, u2]) &
+      l1.is_(Compound("+", [l2, int(1)])) &
+      compound("numlist_", [l1, u2, ns2]),
     ),
   ]
 }

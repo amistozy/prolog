@@ -33,8 +33,8 @@ pub(all) struct VarRef {
 /// - compound terms: `Compound("f", [a, b])` or [`compound`]
 ///
 /// Lists are also represented as cons cells `'.'(H, T)` (built by
-/// [`cons`] or the `|` operator), so `list([1, 2, 3])` and
-/// `1 | 2 | 3 | empty_list()` unify with each other.
+/// [`cons`] or [`list_tail`]), so `list([1, 2, 3])` and
+/// `cons(1, cons(2, cons(3, empty_list())))` unify with each other.
 pub(all) enum Term {
   Int(Int)
   Float(Double)
@@ -129,8 +129,9 @@ pub fn compound(functor : String, args : Array[Term]) -> Term {
 }
 
 ///|
-/// The list constructor `[H | T]`; also available as the `|` operator:
-/// `h | t`.
+/// The list constructor `[H | T]`; use [`cons`] (or [`list_tail`]) to build
+/// lists as cons chains — the `|` operator is reserved for the Prolog
+/// disjunction `;`.
 pub fn cons(head : Term, tail : Term) -> Term {
   Compound(".", [head, tail])
 }
@@ -189,9 +190,9 @@ pub impl Neg for Term with fn neg(self) {
 }
 
 ///|
-/// `a | b` builds the list `[a | b]` (a cons cell).
+/// `a | b` builds the disjunction `(a ; b)`.
 pub impl BitOr for Term with fn lor(self, other) {
-  Compound(".", [self, other])
+  Compound(";", [self, other])
 }
 
 ///|
