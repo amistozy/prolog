@@ -2,7 +2,7 @@
 /// A goal frame on the goal stack: the goal plus the cut mark of the clause
 /// body it belongs to. The mark is the length of the choice-point stack when
 /// the enclosing clause was entered; `!` truncates the stack to it.
-struct Frame {
+priv struct Frame {
   goal : Term
   mark : Int
 } derive(Debug)
@@ -10,30 +10,30 @@ struct Frame {
 ///|
 /// Immutable goal stack. Pushing creates a new cell, so frames pushed before
 /// a choice point are automatically snapshotted by reference.
-enum FStack {
+priv enum FStack {
   FNil
   FCons(Frame, FStack)
 } derive(Debug)
 
 ///|
 /// How to resume from a choice point during backtracking.
-enum Alt {
+priv enum Alt {
   /// Try the next clause of a predicate call.
   Clauses(goal~ : Term, key~ : (String, Int), next~ : Int)
   /// Solve a pending goal, e.g. the second branch of a disjunction.
   Goal(goal~ : Term, mark~ : Int)
-} derive(Debug)
+}
 
 ///|
 /// A suspended search state that backtracking can resume.
-struct Choice {
+priv struct Choice {
   goals : FStack
   subst : Subst
   /// Number of active `dif/2` constraints when the choice point was pushed;
   /// backtracking truncates `Machine.diffs` back to this length.
   diffs_len : Int
   alt : Alt
-} derive(Debug)
+}
 
 ///|
 /// The SLD resolution machine. `subst` maps are never mutated in place, so
@@ -41,7 +41,7 @@ struct Choice {
 ///
 /// `diffs` holds the active `dif/2` disequality constraints; like `choices`,
 /// it is truncated on backtracking (see [`Choice::diffs_len`]).
-struct Machine {
+priv struct Machine {
   prog : Program
   mut stack : FStack
   mut subst : Subst
@@ -51,7 +51,7 @@ struct Machine {
   /// True right after a solution has been yielded; the next step must
   /// resume by backtracking.
   mut resumed : Bool
-} derive(Debug)
+}
 
 ///|
 /// Builds a fresh machine for the given program, with an empty goal stack,
@@ -348,7 +348,7 @@ pub fn Program::solve_subst(self : Program, goals : Array[Term]) -> Iter[Subst] 
 /// `order` records the names in order of first appearance in the query, so
 /// answers render deterministically as `X = john, Y = mary` regardless of
 /// hash-map iteration order.
-pub struct Answer {
+struct Answer {
   bindings : Map[String, Term]
   order : Array[String]
 } derive(Debug)

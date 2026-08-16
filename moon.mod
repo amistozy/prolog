@@ -19,13 +19,7 @@ repository = "https://github.com/amistozy/prolog"
 
 license = "Apache-2.0"
 
-keywords = [
-  "prolog",
-  "edsl",
-  "logic-programming",
-  "logic",
-  "moonbit",
-]
+keywords = [ "prolog", "edsl", "logic-programming", "logic", "moonbit" ]
 
 preferred_target = "wasm"
 

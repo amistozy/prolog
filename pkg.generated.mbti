@@ -48,17 +48,10 @@ pub(all) suberror PrologError {
 } derive(@debug.Debug)
 
 // Types and methods
-type Alt derive(@debug.Debug)
-
-pub struct Answer {
-  bindings : Map[String, Term]
-  order : Array[String]
-} derive(@debug.Debug)
+type Answer derive(@debug.Debug)
 pub fn Answer::from_subst(@hashmap.HashMap[Int, Term], Array[Term]) -> Self
 pub fn Answer::get(Self, String) -> Term?
 pub impl Show for Answer
-
-type Choice derive(@debug.Debug)
 
 pub struct Clause {
   head : Term
@@ -66,12 +59,6 @@ pub struct Clause {
 } derive(@debug.Debug)
 pub fn Clause::Clause(Term, Term) -> Self
 pub fn Clause::fact(Term) -> Self
-
-type FStack derive(@debug.Debug)
-
-type Frame derive(@debug.Debug)
-
-type Machine derive(@debug.Debug)
 
 type Parser derive(@debug.Debug)
 
