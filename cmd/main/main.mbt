@@ -72,4 +72,23 @@ fn main raise {
   }
   let none = lib.solve([parse_term("(dif(X, b), X = b)")]).to_array()
   println("dif(X, b), X = b has \{none.length()} solution(s)")
+
+  println("== dynamic predicates ==")
+  let dyn_prog = parse_program(":- dynamic(fact/2).")
+  for ans in dyn_prog.solve([parse_term("assertz(fact(john, 42))")]) {
+    println(ans)
+  }
+  for ans in dyn_prog.solve([parse_term("assertz(fact(mary, 7))")]) {
+    println(ans)
+  }
+  for ans in dyn_prog.solve([parse_term("fact(X, N)")]) {
+    println(ans)
+  }
+  for
+    ans in dyn_prog.solve([
+      parse_term("(fact(john, N), retract(fact(john, N)))"),
+    ]) {
+    println(ans)
+  }
+  println("facts left: \{dyn_prog.solve([parse_term("fact(_, _)")]).count()}")
 }

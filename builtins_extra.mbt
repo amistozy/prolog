@@ -15,6 +15,20 @@ fn Machine::findall(
   goal : Term,
   result : Term,
 ) -> Bool {
+  self.findall_impl(template, goal, result, None)
+}
+
+///|
+/// Shared implementation of `findall/3` and `findall/4`. With a tail, the
+/// solutions are returned as the difference list `L = [s1, ..., sn | Tail]`
+/// (cf. Scryer's `findall/4` in `builtins.pl`).
+fn Machine::findall_impl(
+  self : Machine,
+  template : Term,
+  goal : Term,
+  result : Term,
+  tail : Term?,
+) -> Bool {
   let saved_stack = self.stack
   let saved_subst = self.subst
   let cb = self.choices.length()
@@ -35,7 +49,10 @@ fn Machine::findall(
   self.choices.truncate(cb)
   self.diffs.truncate(db)
   self.resumed = false
-  self.unify_goal(result, list(results))
+  match tail {
+    None => self.unify_goal(result, list(results))
+    Some(t) => self.unify_goal(result, list_tail(results, t))
+  }
 }
 
 ///|
@@ -674,4 +691,161 @@ fn variant_eq_list(a : Array[Term], b : Array[Term]) -> Bool {
     let (x, y) = p
     variant_eq(x, y)
   })
+}
+
+///|
+/// `subsumes_term(General, Specific)`: true iff `General` can be made
+/// equivalent to `Specific` by binding only variables in `General` (ISO
+/// 8.2.11, cf. Scryer's `subsumes_term/2` in `builtins.pl`). The
+/// implementation unifies the two terms and checks that every variable of
+/// `Specific` is left unbound; the substitution is not committed.
+fn Machine::subsumes_term(self : Machine, g : Term, s : Term) -> Bool {
+  let rs = s.resolve(self.subst)
+  let seen : Map[Int, Unit] = Map([])
+  let svs : Array[VarRef] = []
+  collect_vars_into(rs, seen, svs)
+  let g2 = g.resolve(self.subst)
+  match g2.unify(rs, self.subst) {
+    None => false
+    Some(s2) => {
+      for v in svs {
+        match Var(v).deref(s2) {
+          Var(v2) => if v2.id != v.id { return false }
+          _ => return false
+        }
+      }
+      true
+    }
+  }
+}
+
+///|
+/// `acyclic_term(T)`: true iff `T` contains no cycles. Unification always
+/// performs the occur check in this EDSL, so bindings can never create a
+/// cycle; the check is still performed for safety (cf. Scryer's
+/// `acyclic_term/1`).
+fn is_acyclic(t : Term, seen : Map[Int, Unit]) -> Bool {
+  match t {
+    Var(v) =>
+      if seen.contains(v.id) {
+        false
+      } else {
+        seen[v.id] = ()
+        true
+      }
+    List(xs) => xs.all(x => is_acyclic(x, seen))
+    Compound(_, args) => args.all(x => is_acyclic(x, seen))
+    _ => true
+  }
+}
+
+///|
+/// `keysort(L, S)`: sorts a proper list of pairs `Key-Value` by `Key` in
+/// standard order, keeping the input order of pairs with equal keys
+/// (stable), cf. Scryer's `keysort/2` used by `list_to_set/2`.
+fn Machine::keysort(self : Machine, l : Term, s : Term) -> Bool {
+  match list_parts(l.deref(self.subst)) {
+    Some((elems, tail)) if tail is Atom("[]") => {
+      let resolved = elems.map(x => x.resolve(self.subst))
+      // (key, original element, input index) — the index makes the sort
+      // deterministic and stable regardless of the underlying sort.
+      let decorated : Array[(Term, Term, Int)] = []
+      for i in 0..<resolved.length() {
+        let key = match resolved[i] {
+          Compound("-", [k, _]) => k
+          other => other
+        }
+        decorated.push((key, resolved[i], i))
+      }
+      decorated.sort_by((p, q) => {
+        let c = p.0.compare(q.0)
+        if c != 0 {
+          c
+        } else {
+          p.2.compare(q.2)
+        }
+      })
+      self.unify_goal(s, list(decorated.map(p => p.1)))
+    }
+    _ => false
+  }
+}
+
+///|
+/// `list_to_set(L, S)`: removes duplicate elements from a proper list,
+/// keeping the first occurrence (like Scryer's `list_to_set/2` in
+/// `lists.pl`; duplicates are detected by identity, so two distinct
+/// variables are both kept).
+fn Machine::list_to_set(self : Machine, l : Term, s : Term) -> Bool {
+  match list_parts(l.deref(self.subst)) {
+    Some((elems, tail)) if tail is Atom("[]") => {
+      let resolved = elems.map(x => x.resolve(self.subst))
+      let out : Array[Term] = []
+      for e in resolved {
+        if !out.any(o => identical_terms(e, o)) {
+          out.push(e)
+        }
+      }
+      self.unify_goal(s, list(out))
+    }
+    _ => false
+  }
+}
+
+///|
+/// `numbervars(T, Start, End)`: replaces the variables of `T` (in order of
+/// first occurrence) by `'$VAR'(N)` terms, starting at `Start`, and unifies
+/// `End` with the next unused number (cf. Scryer's `library(terms)`
+/// `numbervars/3`). Repeated variables share one number.
+fn Machine::numbervars(
+  self : Machine,
+  t : Term,
+  start : Term,
+  end : Term,
+) -> Bool {
+  match start.deref(self.subst) {
+    Int(s) => {
+      let seen : Map[Int, Int] = Map([])
+      let (rt, n) = number_vars(t.resolve(self.subst), s, seen)
+      self.unify_goal(t, rt) && self.unify_goal(end, int(n))
+    }
+    _ => false
+  }
+}
+
+///|
+/// Replaces the variables of `t` by `'$VAR'(N)` terms, threading the
+/// counter and the id -> number map.
+fn number_vars(t : Term, n : Int, seen : Map[Int, Int]) -> (Term, Int) {
+  match t {
+    Var(v) =>
+      match seen.get(v.id) {
+        Some(k) => (Compound("$VAR", [Int(k)]), n)
+        None => {
+          seen[v.id] = n
+          (Compound("$VAR", [Int(n)]), n + 1)
+        }
+      }
+    List(xs) => {
+      let out : Array[Term] = []
+      let mut m = n
+      for x in xs {
+        let (r, m2) = number_vars(x, m, seen)
+        out.push(r)
+        m = m2
+      }
+      (List(out), m)
+    }
+    Compound(f, args) => {
+      let out : Array[Term] = []
+      let mut m = n
+      for x in args {
+        let (r, m2) = number_vars(x, m, seen)
+        out.push(r)
+        m = m2
+      }
+      (Compound(f, out), m)
+    }
+    other => (other, n)
+  }
 }

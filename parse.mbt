@@ -35,7 +35,8 @@ pub fn parse_term(text : String) -> Term raise ParseError {
 
 ///|
 /// Parses one clause: `head :- body.` or a bare fact `head.` (the trailing
-/// period is optional).
+/// period is optional). Directives like `:- dynamic(p/1).` are rejected —
+/// use [`parse_program`] for those.
 ///
 /// ```mbt check
 /// test {
@@ -47,13 +48,17 @@ pub fn parse_term(text : String) -> Term raise ParseError {
 /// ```
 pub fn parse_clause(text : String) -> Clause raise ParseError {
   let p = Parser(tokenize(text))
+  let start = if p.pos < p.toks.length() { p.toks[p.pos].pos } else { 0 }
   let t = p.parse_expr(1200)
   match p.peek() {
     TkPeriod => p.advance()
     _ => ()
   }
   p.expect_eof()
-  parse_clause_term(t)
+  match t {
+    Compound(":-", [_]) => raise ParseError::DirectiveNotAllowed(pos=start)
+    _ => parse_clause_term(t)
+  }
 }
 
 ///|
@@ -68,7 +73,8 @@ fn parse_clause_term(t : Term) -> Clause {
 }
 
 ///|
-/// Parses a whole program (a sequence of clauses separated by `.`), e.g.
+/// Parses a whole program (a sequence of clauses and directives separated
+/// by `.`), e.g.
 ///
 /// ```mbt check
 /// test {
@@ -80,9 +86,14 @@ fn parse_clause_term(t : Term) -> Clause {
 ///   assert_eq(answers.length(), 2)
 /// }
 /// ```
+///
+/// Directives are `:- Goal.` terms; `:- dynamic(Name/Arity, ...)` declares
+/// dynamic predicates (see the dynamic predicates section of the README).
+/// Other directives raise [`ParseError::UnsupportedDirective`].
 pub fn parse_program(text : String) -> Program raise ParseError {
   let p = Parser(tokenize(text))
   let clauses : Array[Clause] = []
+  let directives : Array[(Int, Term)] = []
   for ;; {
     // skip stray periods
     while p.peek() is TkPeriod {
@@ -93,14 +104,56 @@ pub fn parse_program(text : String) -> Program raise ParseError {
     }
     // Each clause has its own variable scope.
     p.vars = Map([])
+    let start = if p.pos < p.toks.length() { p.toks[p.pos].pos } else { 0 }
     let t = p.parse_expr(1200)
     match p.peek() {
       TkPeriod => p.advance()
       _ => ()
     }
-    clauses.push(parse_clause_term(t))
+    match t {
+      Compound(":-", [body]) => directives.push((start, body))
+      _ => clauses.push(parse_clause_term(t))
+    }
   }
-  try! Program(clauses)
+  let prog = try! Program(clauses)
+  for item in directives {
+    let (pos, d) = item
+    apply_directive(prog, d, pos)
+  }
+  prog
+}
+
+///|
+/// Applies one parsed directive to the program. Only `dynamic/1` (with one
+/// or more predicate indicators or callable heads) is supported.
+fn apply_directive(
+  prog : Program,
+  d : Term,
+  pos : Int,
+) -> Unit raise ParseError {
+  match d {
+    Compound("dynamic", args) =>
+      for a in args {
+        match indicator_key(a) {
+          Some(key) => prog.declare_dynamic(key)
+          None =>
+            raise ParseError::UnsupportedDirective(pos~, name=d.to_string())
+        }
+      }
+    _ => raise ParseError::UnsupportedDirective(pos~, name=d.to_string())
+  }
+}
+
+///|
+/// The predicate key denoted by a directive argument: `p/1` (an indicator),
+/// `p` (atom, arity 0) or `p(X)` (a callable head).
+fn indicator_key(t : Term) -> (String, Int)? {
+  match t {
+    Compound("/", [Atom(name), Int(arity)]) if arity >= 0 => Some((name, arity))
+    Atom(name) => Some((name, 0))
+    Compound(name, args) => Some((name, args.length()))
+    _ => None
+  }
 }
 
 ///|
@@ -110,6 +163,12 @@ pub(all) suberror ParseError {
   UnexpectedEof(pos~ : Int)
   UnclosedString(pos~ : Int)
   InvalidNumber(pos~ : Int, text~ : String)
+  /// A directive (e.g. `:- dynamic(p/1).`) given to [`parse_clause`],
+  /// which only accepts clauses.
+  DirectiveNotAllowed(pos~ : Int)
+  /// A directive [`parse_program`] does not support (only `:- dynamic`
+  /// is recognized).
+  UnsupportedDirective(pos~ : Int, name~ : String)
 } derive(Debug)
 
 ///|
@@ -565,10 +624,12 @@ fn infix_op(s : String) -> (Int, String)? {
 }
 
 ///|
-/// Prefix operator table: (precedence).
+/// Prefix operator table: (precedence). `:-` in prefix position starts a
+/// directive, e.g. `:- dynamic(p/1).`.
 fn prefix_op(s : String) -> Int? {
   match s {
     "-" | "+" | "\\+" => Some(200)
+    ":-" => Some(1200)
     _ => None
   }
 }

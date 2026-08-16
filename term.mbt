@@ -238,16 +238,77 @@ pub impl Eq for Term with fn equal(a, b) {
 /// Renders a term in Prolog syntax: `parent(john, mary)`, `[1, 2 | X]`,
 /// `(a, b)`, `(X + 1) * 2`.
 pub impl Show for Term with fn to_string(self) {
-  match self {
+  render_term(self, false)
+}
+
+///|
+/// Renders a term like [`Show`](index.html#show), but quoting atoms that
+/// would not parse back as themselves: `'Foo'`, `'a b'`, `''`. Used by the
+/// `writeq/1` builtin (cf. Scryer's `writeq/1` in `builtins.pl`).
+///
+/// ```mbt check
+/// test {
+///   assert_eq(atom("foo").quoted(), "foo")
+///   assert_eq(atom("Foo").quoted(), "'Foo'")
+///   assert_eq(atom("a b").quoted(), "'a b'")
+///   assert_eq(atom("").quoted(), "''")
+///   assert_eq(atom("[]").quoted(), "[]")
+///   assert_eq(atom("!").quoted(), "!")
+///   assert_eq(str("hi").quoted(), "\"hi\"")
+/// }
+/// ```
+pub fn Term::quoted(self : Term) -> String {
+  render_term(self, true)
+}
+
+///|
+fn render_term(t : Term, q : Bool) -> String {
+  match t {
     Int(i) => i.to_string()
     Float(d) => render_float(d)
-    Atom(name) => name
+    Atom(name) => if q { quote_atom(name) } else { name }
     Str(s) => "\"\{s}\""
     Var(v) => if v.name == "" { "_\{v.id}" } else { v.name }
-    List(xs) => render_chain(list_tail(xs, Atom("[]")))
-    Compound(".", [head, tail]) => render_chain(cons(head, tail))
-    Compound(name, args) => render_compound(name, args)
+    List(xs) => render_chain(list_tail(xs, Atom("[]")), q)
+    Compound(".", [head, tail]) => render_chain(cons(head, tail), q)
+    Compound(name, args) => render_compound(name, args, q)
   }
+}
+
+///|
+/// Quotes an atom when needed: empty, starting with an uppercase letter,
+/// underscore or digit, or containing characters outside `[a-zA-Z0-9_]`.
+/// `[]`, `!` and `{}` always stay unquoted (they read back as themselves).
+fn quote_atom(name : String) -> String {
+  if atom_needs_quote(name) {
+    "'" + name.replace(old="'", new="''") + "'"
+  } else {
+    name
+  }
+}
+
+///|
+fn atom_needs_quote(s : String) -> Bool {
+  if s == "[]" || s == "!" || s == "{}" {
+    return false
+  }
+  if s == "" {
+    return true
+  }
+  let c0 = s[0]
+  if !(c0 >= 'a' && c0 <= 'z') {
+    return true
+  }
+  for i in 0..<s.length() {
+    let c = s[i]
+    if !((c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      c == '_') {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -269,41 +330,41 @@ fn render_float(d : Double) -> String {
 
 ///|
 /// Renders a cons chain as `[a, b]` or `[a, b | tail]`.
-fn render_chain(t : Term) -> String {
+fn render_chain(t : Term, q : Bool) -> String {
   let heads : Array[String] = []
   let mut cur = t
   for ;; {
     match cur {
       Compound(".", [h, tail]) => {
-        heads.push("\{h}")
+        heads.push(render_term(h, q))
         cur = tail
       }
       List(xs) => {
         // A `List` in tail position contributes its elements and ends the
         // chain, e.g. `[1 | [2, 3]]` renders as `[1, 2, 3]`.
         for x in xs {
-          heads.push("\{x}")
+          heads.push(render_term(x, q))
         }
         cur = Atom("[]")
       }
       _ => break
     }
   }
-  let tail_s = if cur is Atom("[]") { "" } else { " | \{cur}" }
+  let tail_s = if cur is Atom("[]") { "" } else { " | \{render_term(cur, q)}" }
   let sep = ", "
   "[\{heads.join(sep)}\{tail_s}]"
 }
 
 ///|
 /// Renders a compound term, with infix notation for arithmetic and
-/// `,` / `;` for conjunction / disjunction.
-fn render_compound(name : String, args : Array[Term]) -> String {
+/// `,` / `;` / `->` for conjunction / disjunction / if-then.
+fn render_compound(name : String, args : Array[Term], q : Bool) -> String {
   if name == "," && args.length() == 2 {
-    "\{args[0]}, \{args[1]}"
+    "\{render_term(args[0], q)}, \{render_term(args[1], q)}"
   } else if name == ";" && args.length() == 2 {
-    "(\{args[0]}; \{args[1]})"
+    "(\{render_term(args[0], q)}; \{render_term(args[1], q)})"
   } else if name == "{}" && args.length() == 1 {
-    "{ \{args[0]} }"
+    "{ \{render_term(args[0], q)} }"
   } else if args.length() == 2 &&
     (
       name == "+" ||
@@ -314,9 +375,10 @@ fn render_compound(name : String, args : Array[Term]) -> String {
       name == "div" ||
       name == "mod" ||
       name == "^" ||
-      name == "-->"
+      name == "-->" ||
+      name == "->"
     ) {
-    "(\{args[0]} \{name} \{args[1]})"
+    "(\{render_term(args[0], q)} \{name} \{render_term(args[1], q)})"
   } else if args.length() == 2 &&
     (
       name == "=" ||
@@ -336,12 +398,12 @@ fn render_compound(name : String, args : Array[Term]) -> String {
       name == "@=<" ||
       name == "@>="
     ) {
-    "\{args[0]} \{name} \{args[1]}"
+    "\{render_term(args[0], q)} \{name} \{render_term(args[1], q)}"
   } else if name == "-" && args.length() == 1 {
-    "-\{args[0]}"
+    "-\{render_term(args[0], q)}"
   } else if name == "\\+" && args.length() == 1 {
-    "\\+ \{args[0]}"
+    "\\+ \{render_term(args[0], q)}"
   } else {
-    "\{name}(\{args.map(x => "\{x}").join(", ")})"
+    "\{name}(\{args.map(x => render_term(x, q)).join(", ")})"
   }
 }

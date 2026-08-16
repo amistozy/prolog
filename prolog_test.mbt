@@ -1201,3 +1201,451 @@ test "coverage: float arithmetic, comparisons, type tests, functor" {
     .to_array()
   assert_eq(fu9.length(), 0)
 }
+
+///|
+test "dynamic predicates: assertz, asserta, persistence across queries" {
+  let p = Program([])
+  // assertz on a fresh predicate creates it (dynamically), like Scryer
+  let a = p
+    .solve([compound("assertz", [compound("p", [atom("a")])])])
+    .to_array()
+  assert_eq(a.length(), 1)
+  // visible in a *new* query on the same program value
+  let x = variable("X")
+  let answers = p.solve([compound("p", [x])]).to_array()
+  assert_eq(answers.length(), 1)
+  assert_eq(answers[0].to_string(), "X = a")
+  // assertz appends, asserta prepends
+  let _ = p
+    .solve([compound("assertz", [compound("p", [atom("b")])])])
+    .to_array()
+  let _ = p
+    .solve([compound("asserta", [compound("p", [atom("c")])])])
+    .to_array()
+  let ordered = p.solve([compound("p", [x])]).to_array()
+  assert_eq(ordered.length(), 3)
+  assert_eq(ordered[0].to_string(), "X = c")
+  assert_eq(ordered[1].to_string(), "X = a")
+  assert_eq(ordered[2].to_string(), "X = b")
+}
+
+///|
+test "dynamic predicates: asserted clauses are copied, not shared" {
+  // asserting before binding X stores a fresh copy of the variable ...
+  let p = Program([])
+  let x = variable("X")
+  let y = variable("Y")
+  let a1 = p
+    .solve([
+      compound("assertz", [compound("w", [x])]),
+      x.eq(atom("a")),
+      compound("w", [y]),
+    ])
+    .to_array()
+  assert_eq(a1[0].to_string(), "X = a, Y = X")
+  // ... and asserting after binding X stores the resolved value
+  let p2 = Program([])
+  let x2 = variable("X")
+  let y2 = variable("Y")
+  let a2 = p2
+    .solve([
+      x2.eq(atom("a")),
+      compound("assertz", [compound("w", [x2])]),
+      compound("w", [y2]),
+    ])
+    .to_array()
+  assert_eq(a2[0].to_string(), "X = a, Y = a")
+}
+
+///|
+test "dynamic predicates: rules and clause/2" {
+  let p = Program([])
+  let _ = p
+    .solve([compound("assertz", [parse_term("q(X) :- p(X)")])])
+    .to_array()
+  let _ = p.solve([compound("assertz", [parse_term("q(a)")])]).to_array()
+  // clause/2 enumerates rules and facts with fresh copies, in assert order
+  let h = variable("H")
+  let b = variable("B")
+  let cs = p.solve([compound("clause", [h, b])]).to_array()
+  assert_eq(cs.length(), 2)
+  assert_eq(cs[0].to_string(), "H = q(X), B = p(X)")
+  assert_eq(cs[1].to_string(), "H = q(a), B = true")
+  // clause/2 fails on static predicates
+  let sp = Program([Clause::fact(compound("s", [atom("a")]))])
+  assert_eq(
+    sp
+    .solve([compound("clause", [compound("s", [atom("a")]), b])])
+    .to_array()
+    .length(),
+    0,
+  )
+}
+
+///|
+test "dynamic predicates: retract with backtracking" {
+  let p = Program([])
+  for i in 1..<=3 {
+    let _ = p.solve([compound("assertz", [compound("r", [int(i)])])]).to_array()
+  }
+  let y = variable("Y")
+  // retract/1 retracts the first match; backtracking retracts the next
+  let retracted = p
+    .solve([compound("retract", [compound("r", [y])])])
+    .to_array()
+  assert_eq(retracted.length(), 3)
+  assert_eq(retracted[0].to_string(), "Y = 1")
+  assert_eq(retracted[1].to_string(), "Y = 2")
+  assert_eq(retracted[2].to_string(), "Y = 3")
+  // all three are gone, and retraction is not undone on backtracking
+  assert_eq(p.solve([compound("r", [y])]).to_array().length(), 0)
+  // a retracted clause is never re-derived by pending choice points
+  let p2 = Program([])
+  let _ = p2.solve([compound("assertz", [compound("r", [int(1)])])]).to_array()
+  let _ = p2.solve([compound("assertz", [compound("r", [int(2)])])]).to_array()
+  let x = variable("X")
+  let answers = p2
+    .solve([
+      compound("r", [x]),
+      compound("retract", [compound("r", [x])]),
+      compound("r", [y]),
+    ])
+    .to_array()
+  assert_eq(answers.length(), 1)
+  assert_eq(answers[0].to_string(), "X = 1, Y = 2")
+}
+
+///|
+test "dynamic predicates: retractall, abolish, static protection, dynamic" {
+  // retractall removes every matching clause and always succeeds
+  let p = Program([])
+  let _ = p
+    .solve([compound("assertz", [compound("r", [atom("a")])])])
+    .to_array()
+  let _ = p
+    .solve([compound("assertz", [compound("r", [atom("b")])])])
+    .to_array()
+  let _ = p
+    .solve([compound("assertz", [compound("r", [atom("c")])])])
+    .to_array()
+  let _ = p
+    .solve([compound("retractall", [compound("r", [variable("_")])])])
+    .to_array()
+  let y = variable("Y")
+  assert_eq(p.solve([compound("r", [y])]).to_array().length(), 0)
+  // retractall succeeds even when nothing matches
+  assert_eq(
+    p
+    .solve([compound("retractall", [compound("r", [atom("z")])])])
+    .to_array()
+    .length(),
+    1,
+  )
+  // abolish removes the whole predicate
+  let _ = p
+    .solve([compound("assertz", [compound("w", [atom("a")])])])
+    .to_array()
+  assert_eq(
+    p.solve([compound("abolish", [parse_term("w/1")])]).to_array().length(),
+    1,
+  )
+  assert_eq(p.solve([compound("w", [y])]).to_array().length(), 0)
+  // asserting onto an existing static predicate fails
+  let sp = Program([Clause::fact(compound("s", [atom("a")]))])
+  assert_eq(
+    sp
+    .solve([compound("assertz", [compound("s", [atom("b")])])])
+    .to_array()
+    .length(),
+    0,
+  )
+  // dynamic/1 declares it at runtime (moving the static clauses along)
+  assert_eq(
+    sp.solve([compound("dynamic", [parse_term("s/1")])]).to_array().length(),
+    1,
+  )
+  assert_eq(
+    sp
+    .solve([compound("assertz", [compound("s", [atom("b")])])])
+    .to_array()
+    .length(),
+    1,
+  )
+  let x = variable("X")
+  let answers = sp.solve([compound("s", [x])]).to_array()
+  assert_eq(answers.length(), 2)
+  assert_eq(answers[0].to_string(), "X = a")
+}
+
+///|
+test "dynamic predicates: directives" {
+  let src =
+    #|:- dynamic(p/1).
+    #|p(a). p(b).
+    #|
+  let p = parse_program(src)
+  let x = variable("X")
+  let answers = p.solve([compound("p", [x])]).to_array()
+  assert_eq(answers.length(), 2)
+  assert_eq(answers[0].to_string(), "X = a")
+  // retract works because p/1 was declared dynamic
+  let y = variable("Y")
+  let retracted = p
+    .solve([compound("retract", [compound("p", [y])])])
+    .to_array()
+  assert_eq(retracted.length(), 2)
+  assert_eq(p.solve([compound("p", [x])]).to_array().length(), 0)
+  // multiple indicators in one directive
+  let p2 = parse_program(":- dynamic(p/1, q/2). p(a). q(X, Y) :- p(X), p(Y).")
+  let x2 = variable("X")
+  let qa = p2.solve([compound("q", [x2, atom("a")])]).to_array()
+  assert_eq(qa.length(), 1)
+  // a directive after its clauses also applies
+  let p3 = parse_program("t(1). t(2). :- dynamic(t/1).")
+  let t3 = p3.solve([compound("t", [x])]).to_array()
+  assert_eq(t3.length(), 2)
+  assert_eq(
+    p3
+    .solve([compound("retractall", [compound("t", [variable("_")])])])
+    .to_array()
+    .length(),
+    1,
+  )
+  assert_eq(p3.solve([compound("t", [x])]).to_array().length(), 0)
+  // parse_clause rejects directives; parse_program rejects unknown ones
+  let raised = try {
+    let _ = parse_clause(":- dynamic(p/1).")
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(raised)
+  let raised2 = try {
+    let _ = parse_program(":- use_module(library(lists)).")
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(raised2)
+}
+
+///|
+test "meta: findall/4, subsumes_term, acyclic_term" {
+  let lib = Program::stdlib()
+  let x = variable("X")
+  let l = variable("L")
+  let tail = variable("T")
+  let ans = lib
+    .solve([
+      compound("findall", [
+        x,
+        compound("member", [x, list([int(1), int(2), int(3)])]),
+        l,
+        tail,
+      ]),
+    ])
+    .to_array()
+  assert_eq(ans[0].to_string(), "L = [1, 2, 3 | T]")
+  let p = Program([])
+  // the two examples from Scryer's subsumes_term/2
+  assert_eq(
+    p.solve([parse_term("subsumes_term(f(A, A), f(2, 2))")]).to_array().length(),
+    1,
+  )
+  assert_eq(
+    p.solve([parse_term("subsumes_term(f(A, 2), f(2, A))")]).to_array().length(),
+    0,
+  )
+  // a variable general term subsumes anything; a variable specific term
+  // would be bound, so it is not subsumed
+  assert_eq(
+    p.solve([parse_term("subsumes_term(X, f(1))")]).to_array().length(),
+    1,
+  )
+  assert_eq(
+    p.solve([parse_term("subsumes_term(f(1), f(X))")]).to_array().length(),
+    0,
+  )
+  // acyclic_term/1 always holds: unification performs the occur check
+  assert_eq(
+    p.solve([parse_term("acyclic_term(f(X, g(Y)))")]).to_array().length(),
+    1,
+  )
+  assert_eq(p.solve([parse_term("acyclic_term(X)")]).to_array().length(), 1)
+  // unify_with_occurs_check/2 rejects cyclic bindings
+  assert_eq(
+    p
+    .solve([parse_term("unify_with_occurs_check(X, f(X))")])
+    .to_array()
+    .length(),
+    0,
+  )
+  assert_eq(
+    p.solve([parse_term("unify_with_occurs_check(a, a)")]).to_array().length(),
+    1,
+  )
+}
+
+///|
+test "term builtins: keysort and numbervars" {
+  let p = Program([])
+  // keysort is stable: b-2 stays before b-1
+  let ans = p.solve([parse_term("keysort([b-2, a-1, b-1, c-3], S)")]).to_array()
+  assert_eq(ans[0].to_string(), "S = [(a - 1), (b - 2), (b - 1), (c - 3)]")
+  // numbervars numbers each variable once, sharing numbers for repeats
+  let ans2 = p.solve([parse_term("numbervars(f(X, g(Y, X)), 0, N)")]).to_array()
+  assert_eq(ans2[0].to_string(), "X = $VAR(0), Y = $VAR(1), N = 2")
+}
+
+///|
+test "output: quoted rendering" {
+  assert_eq(atom("foo").quoted(), "foo")
+  assert_eq(atom("Foo").quoted(), "'Foo'")
+  assert_eq(atom("a b").quoted(), "'a b'")
+  assert_eq(atom("").quoted(), "''")
+  assert_eq(atom("it's").quoted(), "'it''s'")
+  assert_eq(atom("[]").quoted(), "[]")
+  assert_eq(atom("!").quoted(), "!")
+  assert_eq(str("hi").quoted(), "\"hi\"")
+  assert_eq(int(3).quoted(), "3")
+  assert_eq(list([atom("Foo"), atom("ok")]).quoted(), "['Foo', ok]")
+  assert_eq(compound("f", [atom("a b")]).quoted(), "f('a b')")
+  // the plain renderer still does not quote
+  assert_eq(atom("Foo").to_string(), "Foo")
+  // `->` renders infix now
+  assert_eq(parse_term("(a -> b)").to_string(), "(a -> b)")
+}
+
+///|
+test "stdlib: append/2, list_to_set, transpose, skipn" {
+  let lib = Program::stdlib()
+  let x = variable("X")
+  let a1 = lib
+    .solve([compound("append", [parse_term("[[1, 2], [3], [4, 5]]"), x])])
+    .to_array()
+  assert_eq(a1[0].to_string(), "X = [1, 2, 3, 4, 5]")
+  let s = variable("S")
+  let a2 = lib
+    .solve([
+      compound("list_to_set", [
+        list([int(2), int(3), int(4), int(4), int(1), int(2)]),
+        s,
+      ]),
+    ])
+    .to_array()
+  assert_eq(a2[0].to_string(), "S = [2, 3, 4, 1]")
+  let t = variable("T")
+  let a3 = lib
+    .solve([compound("transpose", [parse_term("[[1, 1], [2, 2]]"), t])])
+    .to_array()
+  assert_eq(a3[0].to_string(), "T = [[1, 2], [1, 2]]")
+  let r = variable("R")
+  let a4 = lib
+    .solve([compound("skipn", [int(2), parse_term("[a, b, c, d]"), r])])
+    .to_array()
+  assert_eq(a4[0].to_string(), "R = [c, d]")
+}
+
+///|
+test "stdlib: nth0/4, nth1/4, foldl/5, maplist/5" {
+  let lib = Program::stdlib()
+  let a1 = lib.solve([parse_term("nth0(2, [a, b, c, d], E, R)")]).to_array()
+  assert_eq(a1[0].to_string(), "E = c, R = [a, b, d]")
+  let a2 = lib.solve([parse_term("nth1(1, [a, b], E, R)")]).to_array()
+  assert_eq(a2[0].to_string(), "E = a, R = [b]")
+  // nth0/4 is fully relational
+  let a3 = lib.solve([parse_term("nth0(N, [a, b], E, R)")]).to_array()
+  assert_eq(a3.length(), 2)
+  assert_eq(a3[0].to_string(), "N = 0, E = a, R = [b]")
+  assert_eq(a3[1].to_string(), "N = 1, E = b, R = [a]")
+  // foldl/5 with a 4-argument goal
+  lib.add(parse_clause("p(X, Y, A, B) :- B is A + X + Y."))
+  let s = variable("S")
+  let a4 = lib
+    .solve([
+      compound("foldl", [
+        atom("p"),
+        list([int(1), int(2)]),
+        list([int(10), int(20)]),
+        int(0),
+        s,
+      ]),
+    ])
+    .to_array()
+  assert_eq(a4[0].to_string(), "S = 33")
+  // maplist/5 with a 4-argument goal
+  lib.add(parse_clause("q(X, Y, Z, W) :- W is X + Y + Z."))
+  let l = variable("L")
+  let a5 = lib
+    .solve([
+      compound("maplist", [
+        atom("q"),
+        list([int(1), int(2)]),
+        list([int(10), int(20)]),
+        list([int(100), int(200)]),
+        l,
+      ]),
+    ])
+    .to_array()
+  assert_eq(a5[0].to_string(), "L = [111, 222]")
+}
+
+///|
+test "dynamic predicates: edge cases" {
+  let p = Program([])
+  // declare_dynamic on a fresh key (no static clauses to move)
+  p.declare_dynamic(("fresh", 2))
+  // Program::add routes clauses of a dynamic predicate into the store
+  p.add(Clause::fact(compound("fresh", [atom("a"), atom("b")])))
+  let x = variable("X")
+  let y = variable("Y")
+  let ans = p.solve([compound("fresh", [x, y])]).to_array()
+  assert_eq(ans.length(), 1)
+  assert_eq(ans[0].to_string(), "X = a, Y = b")
+  // clause/2 with a variable head searches the whole dynamic store
+  let h = variable("H")
+  let b = variable("B")
+  let cs = p.solve([compound("clause", [h, b])]).to_array()
+  assert_eq(cs.length(), 1)
+  assert_eq(cs[0].to_string(), "H = fresh(a, b), B = true")
+  // non-callable / non-indicator arguments simply fail
+  assert_eq(p.solve([compound("assertz", [int(1)])]).to_array().length(), 0)
+  assert_eq(p.solve([compound("retract", [int(1)])]).to_array().length(), 0)
+  assert_eq(
+    p.solve([compound("abolish", [atom("nope")])]).to_array().length(),
+    0,
+  )
+  // dynamic/1 accepts a callable head too
+  let p2 = Program([Clause::fact(compound("s", [atom("a")]))])
+  assert_eq(
+    p2
+    .solve([compound("dynamic", [compound("s", [atom("b")])])])
+    .to_array()
+    .length(),
+    1,
+  )
+  assert_eq(
+    p2
+    .solve([compound("assertz", [compound("s", [atom("c")])])])
+    .to_array()
+    .length(),
+    1,
+  )
+  // keysort works on non-pair elements (sorted as themselves)
+  let ks = p.solve([parse_term("keysort([3, 1, 2], S)")]).to_array()
+  assert_eq(ks[0].to_string(), "S = [1, 2, 3]")
+  // list_to_set keeps two distinct variables
+  let v1 = variable("V")
+  let v2 = variable("V")
+  let ls = variable("Ls")
+  let lts = p.solve([compound("list_to_set", [list([v1, v2]), ls])]).to_array()
+  assert_eq(lts[0].to_string(), "Ls = [V, V]")
+  // numbervars fails on a non-integer start
+  assert_eq(
+    p.solve([parse_term("numbervars(f(X), a, N)")]).to_array().length(),
+    0,
+  )
+  // writeq and nl succeed (and print)
+  assert_eq(p.solve([compound("writeq", [atom("Foo")])]).to_array().length(), 1)
+  assert_eq(p.solve([compound("nl", [])]).to_array().length(), 1)
+}

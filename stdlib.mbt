@@ -89,6 +89,24 @@ pub fn Program::stdlib() -> Program {
   for c in same_length_clauses() {
     clauses.push(c)
   }
+  for c in append2_clauses() {
+    clauses.push(c)
+  }
+  for c in transpose_clauses() {
+    clauses.push(c)
+  }
+  for c in skipn_clauses() {
+    clauses.push(c)
+  }
+  for c in nth4_clauses() {
+    clauses.push(c)
+  }
+  for c in foldl_extra_clauses() {
+    clauses.push(c)
+  }
+  for c in maplist_extra_clauses() {
+    clauses.push(c)
+  }
   try! Program(clauses)
 }
 
@@ -528,6 +546,225 @@ fn same_length_clauses() -> Array[Clause] {
     Clause(
       compound("same_length", [cons(variable("_"), xs), cons(variable("_"), ys)]),
       compound("same_length", [xs, ys]),
+    ),
+  ]
+}
+
+///|
+/// `append(Xss, Xs)`: concatenates a list of lists, cf. Scryer's
+/// `lists.pl`.
+fn append2_clauses() -> Array[Clause] {
+  let l0 = variable("L0")
+  let ls0 = variable("Ls0")
+  let ls = variable("Ls")
+  let rest = variable("Rest")
+  [
+    Clause::fact(compound("append", [empty_list(), empty_list()])),
+    Clause(
+      compound("append", [cons(l0, ls0), ls]),
+      compound("append", [l0, rest, ls]) & compound("append", [ls0, rest]),
+    ),
+  ]
+}
+
+///|
+/// `transpose(Ls, Ts)`: transposes a list of lists, ported from Scryer's
+/// `lists.pl`.
+fn transpose_clauses() -> Array[Clause] {
+  let ls = variable("Ls")
+  let ts = variable("Ts")
+  let l = variable("L")
+  let ls2 = variable("Ls")
+  let ts2 = variable("Ts")
+  let fs = variable("Fs")
+  let lists0 = variable("Lists0")
+  let lists = variable("Lists")
+  let l3 = variable("L")
+  let ls3 = variable("Ls")
+  [
+    Clause(
+      compound("transpose", [ls, ts]),
+      compound("lists_transpose", [ls, ts]),
+    ),
+    Clause::fact(compound("lists_transpose", [empty_list(), empty_list()])),
+    Clause(
+      compound("lists_transpose", [cons(l, ls2), ts2]),
+      compound("maplist", [compound("same_length", [l]), ls2]) &
+      compound("foldl", [
+        atom("transpose_"),
+        l,
+        ts2,
+        cons(l, ls2),
+        variable("_"),
+      ]),
+    ),
+    Clause(
+      compound("transpose_", [variable("_"), fs, lists0, lists]),
+      compound("maplist", [atom("list_first_rest"), lists0, fs, lists]),
+    ),
+    Clause::fact(compound("list_first_rest", [cons(l3, ls3), l3, ls3])),
+  ]
+}
+
+///|
+/// `skipn(N, L, R)`: drops the first `N` elements of `L`, cf. Scryer's
+/// `lists.pl`.
+fn skipn_clauses() -> Array[Clause] {
+  let n0 = variable("N0")
+  let es0 = variable("Es0")
+  let es = variable("Es")
+  let n1 = variable("N1")
+  let es1 = variable("Es1")
+  let es2 = variable("Es")
+  [
+    Clause(
+      compound("skipn", [n0, es0, es]),
+      Compound(">", [n0, int(0)]) &
+      n1.is_(n0 - int(1)) &
+      es0.eq(cons(variable("_"), es1)) &
+      compound("skipn", [n1, es1, es]),
+    ),
+    Clause::fact(compound("skipn", [int(0), es2, es2])),
+  ]
+}
+
+///|
+/// `nth0(N, L, E, R)` / `nth1(N, L, E, R)`: like `nth0/3` / `nth1/3`, with
+/// `R` the list left after removing `E` (fully relational, in any argument
+/// direction).
+fn nth4_clauses() -> Array[Clause] {
+  let x = variable("X")
+  let t = variable("T")
+  let n = variable("N")
+  let h = variable("H")
+  let r = variable("R")
+  let m = variable("M")
+  let x2 = variable("X")
+  let t2 = variable("T")
+  let n2 = variable("N")
+  let h2 = variable("H")
+  let r2 = variable("R")
+  let m2 = variable("M")
+  [
+    Clause::fact(compound("nth0", [int(0), cons(x, t), x, t])),
+    Clause(
+      compound("nth0", [n, cons(h, t), x, cons(h, r)]),
+      compound("nth0", [m, t, x, r]) & n.is_(m + int(1)),
+    ),
+    Clause::fact(compound("nth1", [int(1), cons(x2, t2), x2, t2])),
+    Clause(
+      compound("nth1", [n2, cons(h2, t2), x2, cons(h2, r2)]),
+      compound("nth1", [m2, t2, x2, r2]) & n2.is_(m2 + int(1)),
+    ),
+  ]
+}
+
+///|
+/// `foldl(G, Xs, Ys, A0, A)` and `foldl(G, Xs, Ys, Zs, A0, A)`: like
+/// `foldl/4` with one / two extra lists, cf. Scryer's `lists.pl`.
+fn foldl_extra_clauses() -> Array[Clause] {
+  let g = variable("G")
+  let x = variable("X")
+  let xs = variable("Xs")
+  let y = variable("Y")
+  let ys = variable("Ys")
+  let a0 = variable("A0")
+  let a = variable("A")
+  let a1 = variable("A1")
+  let g2 = variable("G")
+  let x2 = variable("X")
+  let xs2 = variable("Xs")
+  let y2 = variable("Y")
+  let ys2 = variable("Ys")
+  let z = variable("Z")
+  let zs = variable("Zs")
+  let a02 = variable("A0")
+  let a2 = variable("A")
+  let a12 = variable("A1")
+  [
+    Clause::fact(compound("foldl", [g, empty_list(), empty_list(), a, a])),
+    Clause(
+      compound("foldl", [g, cons(x, xs), cons(y, ys), a0, a]),
+      compound("call", [g, x, y, a0, a1]) &
+      compound("foldl", [g, xs, ys, a1, a]),
+    ),
+    Clause::fact(
+      compound("foldl", [g2, empty_list(), empty_list(), empty_list(), a2, a2]),
+    ),
+    Clause(
+      compound("foldl", [g2, cons(x2, xs2), cons(y2, ys2), cons(z, zs), a02, a2]),
+      compound("call", [g2, x2, y2, z, a02, a12]) &
+      compound("foldl", [g2, xs2, ys2, zs, a12, a2]),
+    ),
+  ]
+}
+
+///|
+/// `maplist(P, Xs, Ys, Zs, Ws)` and `maplist(P, Xs, Ys, Zs, Ws, Vs)`: like
+/// `maplist/2..4` with four / five element lists, cf. Scryer's `lists.pl`.
+fn maplist_extra_clauses() -> Array[Clause] {
+  let p = variable("P")
+  let e1 = variable("E1")
+  let e1s = variable("E1s")
+  let e2 = variable("E2")
+  let e2s = variable("E2s")
+  let e3 = variable("E3")
+  let e3s = variable("E3s")
+  let e4 = variable("E4")
+  let e4s = variable("E4s")
+  let p2 = variable("P")
+  let f1 = variable("E1")
+  let f1s = variable("E1s")
+  let f2 = variable("E2")
+  let f2s = variable("E2s")
+  let f3 = variable("E3")
+  let f3s = variable("E3s")
+  let f4 = variable("E4")
+  let f4s = variable("E4s")
+  let f5 = variable("E5")
+  let f5s = variable("E5s")
+  [
+    Clause::fact(
+      compound("maplist", [
+        p,
+        empty_list(),
+        empty_list(),
+        empty_list(),
+        empty_list(),
+      ]),
+    ),
+    Clause(
+      compound("maplist", [
+        p,
+        cons(e1, e1s),
+        cons(e2, e2s),
+        cons(e3, e3s),
+        cons(e4, e4s),
+      ]),
+      compound("call", [p, e1, e2, e3, e4]) &
+      compound("maplist", [p, e1s, e2s, e3s, e4s]),
+    ),
+    Clause::fact(
+      compound("maplist", [
+        p2,
+        empty_list(),
+        empty_list(),
+        empty_list(),
+        empty_list(),
+        empty_list(),
+      ]),
+    ),
+    Clause(
+      compound("maplist", [
+        p2,
+        cons(f1, f1s),
+        cons(f2, f2s),
+        cons(f3, f3s),
+        cons(f4, f4s),
+        cons(f5, f5s),
+      ]),
+      compound("call", [p2, f1, f2, f3, f4, f5]) &
+      compound("maplist", [p2, f1s, f2s, f3s, f4s, f5s]),
     ),
   ]
 }

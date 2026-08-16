@@ -267,6 +267,34 @@ fn Machine::run_builtin(
       Some(true)
     }
     ("findall", 3) => Some(self.findall(args[0], args[1], args[2]))
+    ("findall", 4) =>
+      Some(self.findall_impl(args[0], args[1], args[2], Some(args[3])))
+    ("asserta", 1) => Some(self.assert_goal(args[0], true))
+    ("assertz", 1) => Some(self.assert_goal(args[0], false))
+    ("retract", 1) => Some(self.retract(args[0], mark))
+    ("retractall", 1) => {
+      self.retractall(args[0])
+      Some(true)
+    }
+    ("abolish", 1) => Some(self.abolish(args[0]))
+    ("clause", 2) => Some(self.clause_goal(args[0], args[1], mark))
+    ("dynamic", 1) => Some(self.dynamic(args[0]))
+    ("$retract_next", 5) => Some(self.retract_next(args, mark))
+    ("subsumes_term", 2) => Some(self.subsumes_term(args[0], args[1]))
+    ("acyclic_term", 1) =>
+      Some(is_acyclic(args[0].resolve(self.subst), Map([])))
+    ("keysort", 2) => Some(self.keysort(args[0], args[1]))
+    ("list_to_set", 2) => Some(self.list_to_set(args[0], args[1]))
+    ("numbervars", 3) => Some(self.numbervars(args[0], args[1], args[2]))
+    ("unify_with_occurs_check", 2) => Some(self.unify_goal(args[0], args[1]))
+    ("writeq", 1) => {
+      println(args[0].resolve(self.subst).quoted())
+      Some(true)
+    }
+    ("nl", 0) => {
+      println("")
+      Some(true)
+    }
     ("forall", 2) => Some(self.not(args[0] & args[1].not()))
     ("functor", 3) => Some(self.functor(args[0], args[1], args[2]))
     ("arg", 3) => Some(self.arg(args[0], args[1], args[2]))

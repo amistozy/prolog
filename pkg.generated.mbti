@@ -4,6 +4,7 @@ package "amistozy/prolog"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/immut/hashmap",
+  "moonbitlang/core/ref",
 }
 
 // Values
@@ -41,6 +42,8 @@ pub(all) suberror ParseError {
   UnexpectedEof(pos~ : Int)
   UnclosedString(pos~ : Int)
   InvalidNumber(pos~ : Int, text~ : String)
+  DirectiveNotAllowed(pos~ : Int)
+  UnsupportedDirective(pos~ : Int, name~ : String)
 } derive(@debug.Debug)
 
 pub(all) suberror PrologError {
@@ -63,11 +66,24 @@ pub struct Clause {
 pub fn Clause::Clause(Term, Term) -> Self
 pub fn Clause::fact(Term) -> Self
 
+pub(all) struct DynClause {
+  id : Int
+  mut dead : Bool
+  clause : Clause
+} derive(@debug.Debug)
+
+pub(all) struct DynPred {
+  mut next_id : Int
+  clauses : Array[DynClause]
+} derive(@debug.Debug)
+
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
+  dyn_store : @ref.Ref[Map[(String, Int), @ref.Ref[DynPred]]]
 } derive(@debug.Debug)
 pub fn Program::Program(Array[Clause]) -> Self raise PrologError
 pub fn Program::add(Self, Clause) -> Unit raise PrologError
+pub fn Program::declare_dynamic(Self, (String, Int)) -> Unit
 pub fn Program::solve(Self, Array[Term]) -> Iter[Answer]
 pub fn Program::solve_all(Self, Array[Term]) -> Array[Answer]
 pub fn Program::solve_first(Self, Array[Term]) -> Answer?
@@ -94,6 +110,7 @@ pub fn Term::is_(Self, Self) -> Self
 pub fn Term::neq(Self, Self) -> Self
 pub fn Term::not(Self) -> Self
 pub fn Term::not_identical(Self, Self) -> Self
+pub fn Term::quoted(Self) -> String
 pub fn Term::resolve(Self, @hashmap.HashMap[Int, Self]) -> Self
 pub fn Term::unify(Self, Self, @hashmap.HashMap[Int, Self]) -> @hashmap.HashMap[Int, Self]?
 pub impl Add for Term

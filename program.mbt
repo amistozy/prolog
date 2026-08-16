@@ -43,8 +43,15 @@ pub(all) suberror PrologError {
 ///
 /// Build one with the [`Program`](index.html#program) constructor and run
 /// queries with [`Program::solve`].
+///
+/// `dyn_store` is the dynamic clause store backing `asserta/1`, `assertz/1`,
+/// `retract/1`, `retractall/1`, `abolish/1` and `clause/2` (cf. Scryer's
+/// dynamic predicates). It lives in a `Ref`, so all copies of the program
+/// — including the machine created per query — share one store, and
+/// assertions persist across queries on the same `Program` value.
 pub struct Program {
   clauses : Map[(String, Int), Array[Clause]]
+  dyn_store : Ref[Map[(String, Int), Ref[DynPred]]]
 } derive(Debug)
 
 ///|
@@ -66,7 +73,7 @@ pub struct Program {
 /// }
 /// ```
 pub fn Program::Program(clauses : Array[Clause]) -> Program raise PrologError {
-  let p = { clauses: Map([]) }
+  let p = { clauses: Map([]), dyn_store: Ref(Map([])) }
   for c in clauses {
     p.add(c)
   }
@@ -75,13 +82,21 @@ pub fn Program::Program(clauses : Array[Clause]) -> Program raise PrologError {
 
 ///|
 /// Adds a clause to the program. Raises [`PrologError::InvalidHead`] when
-/// the head is not an atom or a compound term.
+/// the head is not an atom or a compound term. Clauses whose head predicate
+/// is dynamic are stored in the dynamic clause store (like consulting a
+/// file with `:- dynamic` declarations).
 pub fn Program::add(self : Program, c : Clause) -> Unit raise PrologError {
   match c.head.head_key() {
     Some(key) =>
-      match self.clauses.get(key) {
-        Some(existing) => existing.push(c)
-        None => self.clauses[key] = [c]
+      if self.is_dynamic(key) {
+        let pred = self.dyn_pred(key)
+        pred.val.clauses.push({ id: pred.val.next_id, dead: false, clause: c })
+        pred.val.next_id = pred.val.next_id + 1
+      } else {
+        match self.clauses.get(key) {
+          Some(existing) => existing.push(c)
+          None => self.clauses[key] = [c]
+        }
       }
     None => raise PrologError::InvalidHead(term=c.head)
   }

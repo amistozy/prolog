@@ -171,7 +171,7 @@ fn Machine::backtrack(self : Machine, choice_barrier : Int) -> Bool {
         match ch.alt {
           Clauses(goal=g, key=k, next=n) => {
             let mark = self.choices.length()
-            match self.prog.clauses.get(k) {
+            match self.clauses_of(k) {
               None => continue
               Some(cls) =>
                 if self.try_clauses(g, k, cls, n, mark) {
@@ -249,10 +249,12 @@ fn Machine::execute(self : Machine, fr : Frame) -> Bool {
 
 ///|
 /// Calls a user predicate: tries its clauses in order, standardizing apart
-/// (renaming the clause's variables) before each attempt.
+/// (renaming the clause's variables) before each attempt. Dynamic
+/// predicates are tried through their live dynamic clauses; static
+/// predicates through the program's clause list.
 fn Machine::call_pred(self : Machine, g : Term, key : (String, Int)) -> Bool {
   let mark = self.choices.length()
-  match self.prog.clauses.get(key) {
+  match self.clauses_of(key) {
     None => false
     Some(cls) => self.try_clauses(g, key, cls, 0, mark)
   }

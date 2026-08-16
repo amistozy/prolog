@@ -57,8 +57,11 @@
 ///   [`int`], [`list`], [`compound`], [`cons`], [`list_tail`], [`empty_list`]
 /// - clauses: [`Clause`], [`Clause::fact`]; DCG rules: [`dcg_rule`],
 ///   [`Term::dcg_body`] (with `phrase/2`, `phrase/3` builtins)
-/// - programs: [`Program`], [`Program::stdlib`]
+/// - programs: [`Program`], [`Program::stdlib`], [`Program::declare_dynamic`]
 /// - queries: [`Program::solve`], [`Program::solve_first`], [`Program::solve_all`],
 ///   [`Answer`], [`Answer::get`]
 /// - constraints: [`Term::dif`] (disequality, cf. Scryer's `dif/2`)
+/// - dynamic predicates (cf. Scryer's dynamic clause store): `asserta/1`,
+///   `assertz/1`, `retract/1`, `retractall/1`, `abolish/1`, `clause/2`,
+///   `dynamic/1`, and `:- dynamic(...)` directives in [`parse_program`]
 /// - library predicates: [`stdlib`]
