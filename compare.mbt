@@ -7,19 +7,20 @@
 /// resolve before comparing.
 
 ///|
-/// Compares two resolved terms, returning a negative / zero / positive int
-/// (like `compare/3`). Unbound variables compare by their id.
+/// [`Compare`](https://docs.moonbitlang.com/core/builtin/#Compare) for
+/// terms: compares two resolved terms, returning a negative / zero /
+/// positive int (like `compare/3`). Unbound variables compare by their id.
 ///
 /// ```mbt check
 /// test {
-///   assert_true(atom("a").compare_terms(int(1)) > 0)
-///   assert_eq(int(1).compare_terms(int(1)), 0)
+///   assert_true(atom("a").compare(int(1)) > 0)
+///   assert_eq(int(1).compare(int(1)), 0)
 ///   // standard order: floats sort before integers, so Int(1) > Float(1.0)
-///   assert_true(int(1).compare_terms(float(1.0)) > 0)
+///   assert_true(int(1).compare(float(1.0)) > 0)
 /// }
 /// ```
-pub fn Term::compare_terms(self : Term, other : Term) -> Int {
-  match (self, other) {
+pub impl Compare for Term with fn compare(a : Term, b : Term) -> Int {
+  match (a, b) {
     (Var(x), Var(y)) =>
       if x.id == y.id {
         0
@@ -42,7 +43,7 @@ pub fn Term::compare_terms(self : Term, other : Term) -> Int {
     (Str(x), Str(y)) => compare_strings(x, y)
     (Str(_), _) => -1
     (_, Str(_)) => 1
-    _ => compare_compounds(self, other)
+    _ => compare_compounds(a, b)
   }
 }
 
@@ -89,7 +90,7 @@ fn compare_args(a : Term, b : Term) -> Int {
   }
   let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
   for i in 0..<n {
-    let c = xs[i].compare_terms(ys[i])
+    let c = xs[i].compare(ys[i])
     if c != 0 {
       return c
     }

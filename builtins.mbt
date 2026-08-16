@@ -283,17 +283,13 @@ fn Machine::run_builtin(
     ("=..", 2) => Some(self.univ(args[0], args[1]))
     ("ground", 1) => Some(is_ground(args[0].resolve(self.subst)))
     ("compare", 3) => {
-      let c = args[1]
-        .resolve(self.subst)
-        .compare_terms(args[2].resolve(self.subst))
+      let c = args[1].resolve(self.subst).compare(args[2].resolve(self.subst))
       let ord = if c < 0 { "<" } else if c > 0 { ">" } else { "=" }
       Some(self.unify_goal(args[0], atom(ord)))
     }
     ("sort", 2) | ("msort", 2) => Some(self.sort(name, args[0], args[1]))
     ("@<", 2) | ("@>", 2) | ("@=<", 2) | ("@>=", 2) => {
-      let c = args[0]
-        .resolve(self.subst)
-        .compare_terms(args[1].resolve(self.subst))
+      let c = args[0].resolve(self.subst).compare(args[1].resolve(self.subst))
       Some(
         match name {
           "@<" => c < 0

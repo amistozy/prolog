@@ -84,7 +84,6 @@ pub(all) enum Term {
   Compound(String, Array[Term])
 } derive(@debug.Debug)
 pub fn Term::Term(String) -> Self raise ParseError
-pub fn Term::compare_terms(Self, Self) -> Int
 pub fn Term::dcg_body(Self, Self, Self) -> Self
 pub fn Term::deref(Self, @hashmap.HashMap[Int, Self]) -> Self
 pub fn Term::dif(Self, Self) -> Self
@@ -100,6 +99,7 @@ pub fn Term::unify(Self, Self, @hashmap.HashMap[Int, Self]) -> @hashmap.HashMap[
 pub impl Add for Term
 pub impl BitAnd for Term
 pub impl BitOr for Term
+pub impl Compare for Term
 pub impl Div for Term
 pub impl Eq for Term
 pub impl Mod for Term
